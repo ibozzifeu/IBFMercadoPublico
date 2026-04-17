@@ -32,14 +32,6 @@ export function Header({ className }: HeaderProps) {
           >
             Mercado Público
           </a>
-          <a
-            href='https://github.com'
-            target='_blank'
-            rel='noopener noreferrer'
-            className='transition-colors hover:text-foreground/80 text-foreground/60'
-          >
-            GitHub
-          </a>
         </nav>
       </div>
     </header>
