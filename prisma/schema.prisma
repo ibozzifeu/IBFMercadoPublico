@@ -1,0 +1,185 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// LICITACIÓN
+// ============================================================
+model Licitacion {
+  id                    String   @id @default(cuid())
+
+  // Información básica de Mercado Público
+  codigoExterno         String   @unique
+  nombre                String
+  descripcion           String?  @db.Text
+  estado                String
+  codigoEstado          Int
+
+  // Fechas importantes
+  fechaCierre           DateTime?
+  fechaCreacion         DateTime?
+  fechaPublicacion      DateTime?
+
+  // Información financiera
+  moneda                String?
+  montoEstimado         Float?
+
+  // Clasificación automática (6 categorías TI)
+  // Categorías: Software/Sistemas, Hardware/Equipos, Redes/Telecomunicaciones,
+  //             Seguridad TI, Servicios TI, Tecnología General
+  categoria             String   @default("Tecnología General")
+
+  // Información del comprador/organismo
+  compradorNombre       String?
+  compradorOrganismo    String?
+  compradorUnidad       String?
+  compradorRut          String?
+  compradorCodigoUnidad String?
+  compradorRegion       String?
+  compradorComuna       String?
+  compradorDireccion    String?
+
+  // Contacto del usuario responsable
+  usuarioNombre         String?
+  usuarioCargo          String?
+  usuarioEmail          String?
+  usuarioRut            String?
+
+  // Información adicional
+  tipoLicitacion        String?  // L1, LE, LP, LQ, LR, E2, CO, B2, H2, I2, LS
+  codigoTipo            Int?     // 1=Pública, 2=Privada
+  itemsCantidad         Int      @default(0)
+  etapas                Int      @default(1)
+
+  // URL a API Mercado Público (para referencia)
+  urlApiMercado         String?
+
+  // Relaciones
+  items                 ItemLicitacion[]
+  analisisIA            AnalisisIA[]
+
+  // Timestamps
+  fechaSincronizacion   DateTime @default(now()) @updatedAt
+  creadoEn              DateTime @default(now())
+  actualizadoEn         DateTime @updatedAt
+
+  // Índices para búsquedas rápidas
+  @@index([codigoExterno])
+  @@index([categoria])
+  @@index([fechaCierre])
+  @@index([estado])
+  @@index([codigoEstado])
+  @@map("licitaciones")
+}
+
+// ============================================================
+// ITEMS/PRODUCTOS DE UNA LICITACIÓN
+// ============================================================
+model ItemLicitacion {
+  id                String   @id @default(cuid())
+
+  licitacionId      String
+  licitacion        Licitacion @relation(fields: [licitacionId], references: [id], onDelete: Cascade)
+
+  // Información del item
+  correlativo       Int
+  nombreProducto    String
+  descripcion       String?  @db.Text
+  unidadMedida      String
+  cantidad          Float
+
+  // Códigos UNSPSC (estándar internacional de productos)
+  codigoProducto    Int?
+  codigoCategoria   String?
+
+  creadoEn          DateTime @default(now())
+
+  @@index([licitacionId])
+  @@map("items_licitacion")
+}
+
+// ============================================================
+// ANÁLISIS GENERADO POR IA (GEMINI)
+// ============================================================
+model AnalisisIA {
+  id                String   @id @default(cuid())
+
+  licitacionId      String
+  licitacion        Licitacion @relation(fields: [licitacionId], references: [id], onDelete: Cascade)
+
+  // Tipo de análisis: 'resumen_ejecutivo', 'perfil_proveedor', etc.
+  tipoAnalisis      String
+
+  // Contenido del análisis generado
+  contenido         String   @db.Text
+
+  // Metadata asociada
+  metadata          Json?
+  // Ejemplo:
+  // {
+  //   "tokens_utilizados": 500,
+  //   "tiempo_respuesta_ms": 2345,
+  //   "modelo": "gemini-2.0-flash",
+  //   "temperatura": 0.7
+  // }
+
+  creadoEn          DateTime @default(now())
+
+  // Una licitación solo puede tener un análisis por tipo
+  @@unique([licitacionId, tipoAnalisis])
+  @@index([licitacionId])
+  @@map("analisis_ia")
+}
+
+// ============================================================
+// HISTORIAL DE SINCRONIZACIONES
+// ============================================================
+model HistorialSincronizacion {
+  id                      String   @id @default(cuid())
+
+  fechaEjecucion          DateTime @default(now())
+
+  // Estadísticas de la sincronización
+  licitacionesProcesadas  Int      @default(0)
+  licitacionesNuevas      Int      @default(0)
+  licitacionesActualizadas Int     @default(0)
+
+  // Estado y errores
+  estado                  String   // 'exitosa', 'fallida', 'parcial'
+  errorMensaje            String?  @db.Text
+
+  // Rendimiento
+  duracionSegundos        Float?
+
+  @@index([fechaEjecucion])
+  @@map("historial_sincronizacion")
+}
+
+// ============================================================
+// BÚSQUEDAS Y FAVORITOS (Futuro)
+// ============================================================
+// model BusquedaGuardada {
+//   id            String   @id @default(cuid())
+//   nombre        String
+//   categorias    String[] // JSON array de categorías
+//   terminos      String?  // Términos de búsqueda
+//   estado        String?  // Filtro por estado
+//   creadoEn      DateTime @default(now())
+//   actualizadoEn DateTime @updatedAt
+// }
+
+// model Favorito {
+//   id            String   @id @default(cuid())
+//   licitacionId  String
+//   nota          String?  @db.Text
+//   etiquetas     String[] // JSON array de etiquetas custom
+//   creadoEn      DateTime @default(now())
+// }
