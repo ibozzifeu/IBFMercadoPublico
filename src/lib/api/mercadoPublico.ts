@@ -5,15 +5,15 @@
 import axios from 'axios'
 import { MercadoPublicoResponse } from '@/types/api'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_MP_BASE_URL
-const API_TICKET = process.env.NEXT_PUBLIC_MP_TICKET
+const API_BASE_URL = process.env.MP_BASE_URL
+const API_TICKET = process.env.MP_TICKET
 
 if (!API_BASE_URL) {
-  throw new Error('NEXT_PUBLIC_MP_BASE_URL no está configurado')
+  throw new Error('MP_BASE_URL no está configurado')
 }
 
 if (!API_TICKET) {
-  console.warn('NEXT_PUBLIC_MP_TICKET no está configurado')
+  console.warn('MP_TICKET no está configurado')
 }
 
 const client = axios.create({

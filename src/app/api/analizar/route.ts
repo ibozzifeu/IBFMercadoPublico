@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/api/db'
-import { analizarConGemini } from '@/lib/api/gemini'
+import { db } from '@/lib/api/db'
+import { generarResumenEjecutivo } from '@/lib/api/gemini'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Buscar la licitación
-    const licitacion = await prisma.licitacion.findUnique({
+    const licitacion = await db.licitacion.findUnique({
       where: { id: licitacionId },
       include: {
         items: true,
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar si ya existe un análisis reciente
-    const analisisExistente = await prisma.analisisIA.findFirst({
+    const analisisExistente = await db.analisisIA.findFirst({
       where: {
         licitacionId,
         tipoAnalisis: 'resumen_ejecutivo',
@@ -48,10 +48,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Generar análisis con Gemini
-    const contenido = await analizarConGemini(licitacion)
+    const contenido = await generarResumenEjecutivo(licitacion)
 
     // Guardar análisis en base de datos
-    const analisis = await prisma.analisisIA.create({
+    const analisis = await db.analisisIA.create({
       data: {
         licitacionId,
         tipoAnalisis: 'resumen_ejecutivo',

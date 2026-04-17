@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/api/db'
+import { db } from '@/lib/api/db'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,11 +34,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Obtener total sin filtros para estadísticas
-    const total = await prisma.licitacion.count()
-    const filtradas = await prisma.licitacion.count({ where })
+    const total = await db.licitacion.count()
+    const filtradas = await db.licitacion.count({ where })
 
     // Obtener licitaciones
-    const licitaciones = await prisma.licitacion.findMany({
+    const licitaciones = await db.licitacion.findMany({
       where,
       orderBy,
       take: 100,

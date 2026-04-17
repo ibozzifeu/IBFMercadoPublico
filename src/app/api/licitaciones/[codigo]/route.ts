@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/api/db'
+import { db } from '@/lib/api/db'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,15 +10,16 @@ export async function GET(
   try {
     const { codigo } = params
 
-    // Buscar licitación por código
-    const licitacion = await prisma.licitacion.findUnique({
+    const licitacion = await db.licitacion.findUnique({
       where: { codigoExterno: codigo },
       include: {
         items: {
           orderBy: { correlativo: 'asc' },
+          take: 200,
         },
         analisisIA: {
           orderBy: { creadoEn: 'desc' },
+          take: 1,
         },
       },
     })
@@ -30,10 +31,7 @@ export async function GET(
       )
     }
 
-    return NextResponse.json({
-      licitacion,
-      success: true,
-    })
+    return NextResponse.json({ licitacion, success: true })
   } catch (error) {
     console.error('Error en GET /api/licitaciones/[codigo]:', error)
     return NextResponse.json(
