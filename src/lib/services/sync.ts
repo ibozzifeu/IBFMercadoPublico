@@ -3,7 +3,8 @@
  */
 
 import { db } from '@/lib/api/db'
-import { obtenerLicitacionesActivas, parsearFecha, extraerComprador } from '@/lib/api/mercadoPublico'
+import { obtenerLicitacionesActivas, extraerComprador } from '@/lib/api/mercadoPublico'
+import { parsearFecha } from '@/lib/utils/fechas'
 import { clasificarLicitacion } from '@/lib/services/clasificador'
 import { MercadoPublicoLicitacion } from '@/types/api'
 

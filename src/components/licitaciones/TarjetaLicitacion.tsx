@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/comun/Badge'
 import { Button } from '@/components/comun/Button'
 import { Licitacion } from '@/types/licitacion'
-import { diasHastaCierre, determinarUrgencia } from '@/lib/api/mercadoPublico'
+import { diasHastaCierre, determinarUrgencia } from '@/lib/utils/fechas'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import Link from 'next/link'
