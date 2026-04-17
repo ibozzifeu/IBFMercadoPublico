@@ -1,314 +1,259 @@
-# 📊 MercadoPublico TI - Aplicación de Monitoreo de Licitaciones
+# Monitor de Licitaciones TI — Mercado Público Chile
 
-Monitor inteligente de licitaciones de TI en el Mercado Público de Chile. Proporciona clasificación automática en 6 categorías, estadísticas en tiempo real, búsqueda avanzada y análisis con IA (Gemini).
-
-## 🎯 Funcionalidades
-
-✅ **Clasificación Automática**: 6 categorías TI (Software/Sistemas, Hardware/Equipos, Redes/Telecomunicaciones, Seguridad TI, Servicios TI, Tecnología General)
-
-✅ **Panel de Estadísticas**: Total activas, filtradas TI, que cierran hoy/7 días
-
-✅ **Filtros Avanzados**: Por categoría, búsqueda de texto libre en tiempo real
-
-✅ **Ordenamiento**: Por fecha de cierre (urgentes primero) o por nombre
-
-✅ **Vista de Detalle**: Información completa de licitación (fechas, comprador, monto, ítems)
-
-✅ **Análisis con IA**: Botón en cada detalle para resumen ejecutivo con Gemini
+Aplicación web para monitorear en tiempo real las licitaciones de tecnología del Mercado Público de Chile. Clasifica automáticamente por categoría TI y genera análisis con inteligencia artificial.
 
 ---
 
-## 🚀 Quick Start
-
-### 1. Requisitos Previos
-
-```bash
-- Node.js 18+
-- npm o yarn
-- Docker (recomendado para PostgreSQL)
-- Git
-```
-
-### 2. Clonar y Configurar
-
-```bash
-# Posicionarse en el directorio del proyecto
-cd /home/camf/camfcode/MercadoPublico
-
-# Instalar dependencias
-npm install
-
-# Copiar archivo de configuración
-cp .env.example .env.local
-
-# Editar .env.local con tus credenciales
-nano .env.local
-```
-
-### 3. Configurar Base de Datos
-
-```bash
-# Opción A: Con Docker (recomendado)
-docker-compose up -d
-
-# Opción B: PostgreSQL instalado localmente
-# Asegúrate de que el servicio esté corriendo
-sudo service postgresql start
-```
-
-### 4. Preparar Base de Datos
-
-```bash
-# Crear migraciones
-npx prisma migrate dev --name init
-
-# Generar cliente Prisma
-npx prisma generate
-
-# (Opcional) Abrir Prisma Studio para ver/editar BD
-npx prisma studio
-```
-
-### 5. Obtener Credenciales
-
-**Mercado Público API:**
-1. Ir a https://www.mercadopublico.cl
-2. Ingresar/registrarse
-3. Obtener ticket en "Servicios Disponibles"
-4. Copiar a `.env.local`: `NEXT_PUBLIC_MP_TICKET=xxx`
-
-**Gemini API:**
-1. Ir a https://ai.google.dev
-2. Crear API key
-3. Copiar a `.env.local`: `GEMINI_API_KEY=xxx`
-
-### 6. Iniciar Desarrollo
-
-```bash
-npm run dev
-
-# Abrir http://localhost:3000
-```
-
----
-
-## 📁 Estructura del Proyecto
-
-```
-mercado-publico/
-├── prisma/
-│   ├── schema.prisma           # Modelos de BD
-│   └── migrations/             # Historial de cambios BD
-├── src/
-│   ├── app/                    # Next.js app directory
-│   │   ├── (dashboard)/        # Dashboard página
-│   │   ├── licitaciones/       # Listado y detalle
-│   │   ├── api/                # Rutas API
-│   │   └── layout.tsx
-│   ├── components/             # Componentes React
-│   │   ├── dashboard/
-│   │   ├── licitaciones/
-│   │   ├── detalle/
-│   │   └── comun/
-│   ├── lib/                    # Utilidades y servicios
-│   │   ├── api/                # Clientes de APIs
-│   │   ├── services/           # Lógica de negocio
-│   │   ├── utils/              # Funciones auxiliares
-│   │   └── hooks/              # Custom React hooks
-│   └── types/                  # TypeScript types
-├── public/
-├── .env.example                # Template de variables
-├── docker-compose.yml          # Configuración Docker
-├── next.config.ts
-├── tsconfig.json
-├── tailwind.config.ts
-└── package.json
-```
-
----
-
-## 🔧 Comandos Útiles
-
-### Desarrollo
-
-```bash
-npm run dev              # Iniciar servidor de desarrollo
-npm run build            # Compilar para producción
-npm run start            # Iniciar servidor de producción
-npm run lint             # Verificar código
-npm run type-check       # Verificar tipos TypeScript
-```
-
-### Base de Datos
-
-```bash
-npx prisma generate     # Regenerar cliente Prisma
-npx prisma migrate dev  # Crear/aplicar migración
-npx prisma studio      # Abrir interfaz gráfica
-npx prisma reset       # Resetear BD (CUIDADO!)
-```
-
-### Testing
-
-```bash
-npm test                # Ejecutar tests
-npm run test:watch      # Tests en modo watch
-```
-
-### Docker (PostgreSQL)
-
-```bash
-docker-compose up -d    # Iniciar servicios
-docker-compose down     # Detener servicios
-docker-compose logs -f  # Ver logs
-docker-compose ps       # Listar contenedores
-```
-
----
-
-## 📊 Stack Tecnológico
+## Stack
 
 | Capa | Tecnología |
-|------|-----------|
-| **Frontend** | Next.js 15, React 19, TypeScript |
-| **Estilos** | TailwindCSS, shadcn/ui |
-| **BD** | PostgreSQL 16 + Prisma ORM |
-| **Estado** | React Hooks, Zustand |
-| **APIs** | Mercado Público, Gemini |
-| **Validación** | Zod |
-| **Testing** | Jest, React Testing Library |
+|------|------------|
+| Frontend | Next.js 15 + React 19 + Tailwind CSS |
+| Base de datos | PostgreSQL + Prisma ORM |
+| Autenticación | NextAuth v5 (credentials + JWT) |
+| IA | Google Gemini 2.0 Flash |
+| Fuente de datos | API pública Mercado Público Chile |
 
 ---
 
-## 🌐 Variables de Entorno
+## Requisitos previos
 
-### Base de Datos
-```
-DATABASE_URL=postgresql://usuario:password@localhost:5432/mercado_publico
+- Node.js >= 18
+- PostgreSQL >= 14
+- Ticket de API de Mercado Público ([obtener aquí](https://www.mercadopublico.cl))
+- API Key de Google Gemini ([obtener aquí](https://ai.google.dev))
+
+---
+
+## Instalación
+
+```bash
+# 1. Clonar el repositorio
+git clone <repo-url>
+cd MercadoPublico
+
+# 2. Instalar dependencias
+npm install
+
+# 3. Configurar variables de entorno
+cp .env.example .env.local
+# Editar .env.local con tus credenciales
+
+# 4. Crear tablas en la base de datos
+npx prisma migrate dev
+
+# 5. Iniciar en desarrollo
+npm run dev
 ```
 
-### APIs Externas
-```
-NEXT_PUBLIC_MP_TICKET=tu_ticket_aqui
+---
+
+## Variables de entorno
+
+Copiar `.env.example` a `.env.local` y completar:
+
+```env
+# Base de datos
+DATABASE_URL="postgresql://usuario:password@localhost:5432/mercado_publico"
+
+# API Mercado Público (sin prefijo NEXT_PUBLIC — es un secreto de servidor)
+MP_TICKET=tu_ticket_aqui
+MP_BASE_URL=https://api.mercadopublico.cl/servicios/v1/publico
+
+# Google Gemini
 GEMINI_API_KEY=tu_clave_aqui
 GEMINI_MODEL=gemini-2.0-flash
-```
 
-### Aplicación
-```
-NEXT_PUBLIC_APP_ENV=development
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+# NextAuth (generar secret con: openssl rand -hex 32)
+AUTH_SECRET=genera_con_openssl_rand_hex_32
+AUTH_URL=http://localhost:3000
+AUTH_USERNAME=admin
+AUTH_PASSWORD=tu_password_seguro
+
+# Sincronización
+CRON_SECRET=tu_secret_para_cron
 SYNC_INTERVAL_MINUTES=60
 ```
 
----
-
-## 🔍 Clasificación Automática
-
-La aplicación clasifica licitaciones en 6 categorías TI:
-
-1. **Software/Sistemas**: ERP, CMS, bases de datos, aplicaciones
-2. **Hardware/Equipos**: Servidores, laptops, periféricos
-3. **Redes/Telecomunicaciones**: Routers, firewalls, VPN, conectividad
-4. **Seguridad TI**: Ciberseguridad, antivirus, backup, encriptación
-5. **Servicios TI**: Consultoría, soporte, outsourcing, capacitación
-6. **Tecnología General**: Otros temas de TI no clasificados
+> **Importante:** Las variables sin prefijo `NEXT_PUBLIC_` solo son accesibles en el servidor. Nunca uses `NEXT_PUBLIC_` para tickets, API keys o secrets.
 
 ---
 
-## 🐛 Troubleshooting
+## Estructura del proyecto
 
-### PostgreSQL no conecta
-
-```bash
-# Verificar servicio
-sudo service postgresql status
-
-# O si usas Docker
-docker-compose logs postgres
-docker-compose ps
 ```
-
-### Prisma error
-
-```bash
-# Regenerar cliente
-npx prisma generate
-
-# Aplicar migraciones pendientes
-npx prisma migrate deploy
-```
-
-### Puerto en uso
-
-```bash
-# Cambiar puerto en next.config.ts o iniciar diferente
-npm run dev -- -p 3001
-
-# Liberar puerto 3000
-lsof -ti:3000 | xargs kill -9
+src/
+├── app/
+│   ├── api/
+│   │   ├── auth/[...nextauth]/route.ts   # Handler NextAuth
+│   │   ├── licitaciones/
+│   │   │   ├── route.ts                  # GET /api/licitaciones
+│   │   │   └── [codigo]/route.ts         # GET /api/licitaciones/[codigo]
+│   │   ├── analizar/route.ts             # POST /api/analizar
+│   │   └── sync/route.ts                 # POST /api/sync
+│   ├── licitaciones/
+│   │   ├── page.tsx                      # Listado con filtros
+│   │   └── [codigo]/page.tsx             # Detalle de licitación
+│   └── login/page.tsx                    # Formulario de login
+├── auth.ts                               # Configuración NextAuth v5
+├── middleware.ts                         # Protección de rutas
+├── lib/
+│   ├── api/
+│   │   ├── db.ts                         # Cliente Prisma (singleton)
+│   │   ├── gemini.ts                     # Cliente Gemini API
+│   │   └── mercadoPublico.ts             # Cliente API Mercado Público
+│   ├── services/
+│   │   ├── sync.ts                       # Sincronización con Mercado Público
+│   │   ├── clasificador.ts               # Clasificación TI por palabras clave
+│   │   └── estadisticas.ts               # Queries agregadas para dashboard
+│   ├── hooks/
+│   │   └── useLicitaciones.ts            # Hook de listado con filtros
+│   └── ratelimit.ts                      # Rate limiter en memoria
+├── components/
+│   ├── comun/                            # Header, Card, Badge, Button, etc.
+│   └── licitaciones/                     # TarjetaLicitacion, FiltrosCategorias, BuscaTexto
+└── types/
+    ├── licitacion.ts                     # Tipos internos
+    └── api.ts                            # Tipos de APIs externas
 ```
 
 ---
 
-## 📚 Documentación
+## API Endpoints
 
-- [Arquitectura](./ARQUITECTURA.md) - Diseño completo del sistema
-- [API Licitaciones Activas](./API_LICITACIONES_ACTIVAS.md) - Documentación endpoint estado
-- [API por Código](./API_LICITACIONES_POR_CODIGO.md) - Documentación endpoint específico
-- [Prisma Docs](https://www.prisma.io/docs/)
-- [Next.js Docs](https://nextjs.org/docs)
-- [Gemini API](https://ai.google.dev)
+| Método | Ruta | Auth | Rate Limit | Descripción |
+|--------|------|------|------------|-------------|
+| `GET` | `/api/licitaciones` | NextAuth | 10/min | Listado con filtros |
+| `GET` | `/api/licitaciones/[codigo]` | NextAuth | 10/min | Detalle con items y análisis |
+| `POST` | `/api/analizar` | NextAuth | 10/min | Genera análisis con Gemini |
+| `POST` | `/api/sync` | CRON_SECRET | — | Sincroniza desde Mercado Público |
 
----
+### Parámetros de `/api/licitaciones`
 
-## 📝 Roadmap
+| Parámetro | Tipo | Descripción |
+|-----------|------|-------------|
+| `categoria` | string | Filtrar por categoría TI |
+| `busqueda` | string | Búsqueda en nombre, descripción y código |
+| `ordenarPor` | `fechaCierre` \| `nombre` | Ordenamiento |
 
-### Fase 1: MVP ✅
-- Setup inicial y configuración
-- Dashboard con estadísticas
-- Listado filtrable
-- Detalle de licitación
-- Análisis básico IA
+### Llamar a `/api/sync`
 
-### Fase 2: Mejoras (Próximo)
-- Exportar CSV/PDF
-- Notificaciones por email
-- Historial de búsquedas
-- Favoritos/watchlist
-
-### Fase 3: Avanzado
-- Autenticación
-- Recomendaciones personalizadas
-- API pública
-- Análisis de tendencias
+```bash
+curl -X POST http://localhost:3000/api/sync \
+  -H "x-cron-secret: TU_CRON_SECRET"
+```
 
 ---
 
-## 🤝 Contribuir
+## Categorías TI
 
-Para reportar bugs o sugerir features:
-1. Crear issue descriptivo
-2. Fork del proyecto
-3. Commit cambios
-4. Push a branch
-5. Abrir pull request
+El clasificador asigna automáticamente cada licitación a una de estas categorías usando palabras clave ponderadas:
 
----
-
-## 📧 Soporte
-
-Para dudas o problemas:
-- Revisar [Troubleshooting](#-troubleshooting)
-- Consultar [Arquitectura](./ARQUITECTURA.md)
-- Crear issue en el repo
+| Categoría | Ejemplos |
+|-----------|---------|
+| Software/Sistemas | ERP, CMS, licencias, desarrollo, APIs |
+| Hardware/Equipos | Servidores, notebooks, impresoras, monitores |
+| Redes/Telecomunicaciones | Routers, switches, VPN, fibra óptica |
+| Seguridad TI | Antivirus, backup, cifrado, compliance |
+| Servicios TI | Consultoría, soporte, outsourcing, capacitación |
+| Tecnología General | Otros temas TI no clasificados |
 
 ---
 
-## 📄 Licencia
+## Base de datos
 
-Este proyecto es de código abierto bajo licencia MIT.
+### Modelos Prisma
+
+```
+licitaciones              — Datos principales de cada licitación
+items_licitacion          — Productos/servicios solicitados
+analisis_ia               — Análisis generados por Gemini (cacheados)
+historial_sincronizacion  — Registro de cada ejecución de sync
+```
+
+### Comandos útiles
+
+```bash
+npx prisma studio          # Explorar BD en el navegador
+npx prisma migrate dev     # Aplicar migraciones en desarrollo
+npx prisma migrate reset   # Resetear BD (borra todos los datos)
+npx prisma generate        # Regenerar Prisma Client
+```
 
 ---
 
-**Hecho con ❤️ para el Mercado Público de Chile**
+## Autenticación
+
+NextAuth v5 con provider de credenciales. Las credenciales se configuran en `.env.local`:
+
+```env
+AUTH_USERNAME=admin
+AUTH_PASSWORD=tu_password_seguro
+```
+
+- Sesión JWT con duración de 8 horas
+- Rutas protegidas: `/licitaciones/*`, `/dashboard/*`, `/api/licitaciones/*`, `/api/analizar/*`
+- Las rutas de API devuelven `401 JSON` (no redirect) para no romper los `fetch()` del cliente
+
+---
+
+## Rate Limiting
+
+Implementado en memoria: **10 requests por minuto por IP**.
+
+Los headers de respuesta informan el estado:
+
+```
+X-RateLimit-Limit: 10
+X-RateLimit-Remaining: 7
+X-RateLimit-Reset: 1713392400
+Retry-After: 0
+```
+
+> Para producción con múltiples instancias (Vercel, etc.) reemplazar por Redis/Upstash.
+
+---
+
+## Sincronización automática
+
+Para ejecutar la sincronización cada hora se puede usar un cron job o Vercel Cron Jobs:
+
+```json
+// vercel.json
+{
+  "crons": [{
+    "path": "/api/sync",
+    "schedule": "0 * * * *"
+  }]
+}
+```
+
+Y agregar el header en la llamada:
+```
+x-cron-secret: TU_CRON_SECRET
+```
+
+---
+
+## Scripts disponibles
+
+```bash
+npm run dev            # Servidor de desarrollo
+npm run build          # Build de producción
+npm run start          # Servidor de producción
+npm run lint           # ESLint
+npm run type-check     # TypeScript sin emitir
+npm run format         # Prettier
+npm run prisma:studio  # Explorador de BD
+npm run prisma:migrate # Aplicar migraciones
+npm run prisma:reset   # Resetear BD
+```
+
+---
+
+## Notas de seguridad
+
+- `MP_TICKET` y `GEMINI_API_KEY` son variables de servidor — nunca agregar prefijo `NEXT_PUBLIC_`
+- `.env.local` está en `.gitignore` — nunca commitear credenciales reales
+- `AUTH_SECRET` debe generarse con `openssl rand -hex 32`
+- El endpoint `/api/sync` está protegido por `CRON_SECRET` en el header `x-cron-secret`, no por NextAuth
