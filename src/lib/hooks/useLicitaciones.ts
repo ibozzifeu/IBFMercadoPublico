@@ -24,23 +24,25 @@ export function useLicitaciones(opciones: UseLicitacionesOptions = {}): UseLicit
   const [error, setError] = useState<string | null>(null)
   const [filtradas, setFiltradas] = useState(0)
 
-  const fetch = useCallback(async () => {
+  const { filtroCategoria, busqueda, ordenarPor } = opciones
+
+  const cargar = useCallback(async () => {
     try {
       setCargando(true)
       setError(null)
 
       const params = new URLSearchParams()
-      if (opciones.filtroCategoria && opciones.filtroCategoria !== 'todas') {
-        params.append('categoria', opciones.filtroCategoria)
+      if (filtroCategoria && filtroCategoria !== 'todas') {
+        params.append('categoria', filtroCategoria)
       }
-      if (opciones.busqueda) {
-        params.append('busqueda', opciones.busqueda)
+      if (busqueda) {
+        params.append('busqueda', busqueda)
       }
-      if (opciones.ordenarPor) {
-        params.append('ordenarPor', opciones.ordenarPor)
+      if (ordenarPor) {
+        params.append('ordenarPor', ordenarPor)
       }
 
-      const response = await fetch(`/api/licitaciones?${params.toString()}`)
+      const response = await window.fetch(`/api/licitaciones?${params.toString()}`)
 
       if (!response.ok) {
         throw new Error('Error al obtener licitaciones')
@@ -55,11 +57,11 @@ export function useLicitaciones(opciones: UseLicitacionesOptions = {}): UseLicit
     } finally {
       setCargando(false)
     }
-  }, [opciones])
+  }, [filtroCategoria, busqueda, ordenarPor])
 
   useEffect(() => {
-    fetch()
-  }, [fetch])
+    cargar()
+  }, [cargar])
 
   return {
     licitaciones,
@@ -67,6 +69,6 @@ export function useLicitaciones(opciones: UseLicitacionesOptions = {}): UseLicit
     error,
     total: licitaciones.length,
     filtradas,
-    refetch: fetch,
+    refetch: cargar,
   }
 }
