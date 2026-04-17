@@ -24,12 +24,12 @@ export default function DetalleLicitacionPage() {
   const [analisisIA, setAnalisisIA] = useState<string | null>(null)
 
   useEffect(() => {
-    const fetch = async () => {
+    const cargar = async () => {
       try {
         setCargando(true)
         setError(null)
 
-        const response = await fetch(`/api/licitaciones/${codigo}`)
+        const response = await window.fetch(`/api/licitaciones/${codigo}`)
         if (!response.ok) {
           throw new Error('No se pudo obtener la licitación')
         }
@@ -43,7 +43,7 @@ export default function DetalleLicitacionPage() {
       }
     }
 
-    fetch()
+    cargar()
   }, [codigo])
 
   const handleAnalizarIA = async () => {
@@ -51,7 +51,7 @@ export default function DetalleLicitacionPage() {
 
     try {
       setAnalizando(true)
-      const response = await fetch('/api/analizar', {
+      const response = await window.fetch('/api/analizar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ licitacionId: licitacion.id }),
