@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sincronizarLicitaciones } from '@/lib/services/sync'
+import { auth } from '@/auth'
 
 export const dynamic = 'force-dynamic'
-export const maxDuration = 60 // segundos (Vercel limit en plan Pro)
+export const maxDuration = 60
 
 export async function POST(request: NextRequest) {
-  // Verificar CRON_SECRET — protege el endpoint de llamadas externas
+  // Aceptar sesión NextAuth (llamada desde la UI) o CRON_SECRET (llamada externa)
+  const session = await auth()
   const secret = request.headers.get('x-cron-secret')
-  if (secret !== process.env.CRON_SECRET) {
+
+  if (!session && secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'No autorizado', success: false }, { status: 401 })
   }
 

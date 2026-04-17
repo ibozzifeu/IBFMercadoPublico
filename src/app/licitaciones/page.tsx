@@ -1,17 +1,20 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { Header } from '@/components/comun/Header'
 import { FiltrosCategorias } from '@/components/licitaciones/FiltrosCategorias'
 import { BuscaTexto } from '@/components/licitaciones/BuscaTexto'
 import { TarjetaLicitacion } from '@/components/licitaciones/TarjetaLicitacion'
-import { Loading, SkeletonCard } from '@/components/comun/Loading'
+import { SkeletonCard } from '@/components/comun/Loading'
 import { useLicitaciones } from '@/lib/hooks/useLicitaciones'
+import { RefreshCw } from 'lucide-react'
 
 export default function LicitacionesPage() {
   const [categoria, setCategoria] = useState('todas')
   const [busqueda, setBusqueda] = useState('')
   const [ordenarPor, setOrdenarPor] = useState<'fechaCierre' | 'nombre'>('fechaCierre')
+  const [sincronizando, setSincronizando] = useState(false)
+  const [mensajeSync, setMensajeSync] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null)
 
   const { licitaciones, cargando, error, filtradas, refetch } = useLicitaciones({
     filtroCategoria: categoria,
@@ -19,18 +22,61 @@ export default function LicitacionesPage() {
     ordenarPor,
   })
 
+  async function handleSync() {
+    setSincronizando(true)
+    setMensajeSync(null)
+    try {
+      const res = await window.fetch('/api/sync', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error al sincronizar')
+      setMensajeSync({
+        tipo: 'ok',
+        texto: `Sincronización completada: ${data.nuevas} nuevas, ${data.actualizadas} actualizadas`,
+      })
+      await refetch()
+    } catch (err) {
+      setMensajeSync({
+        tipo: 'error',
+        texto: err instanceof Error ? err.message : 'Error al sincronizar',
+      })
+    } finally {
+      setSincronizando(false)
+    }
+  }
+
   return (
     <>
       <Header />
 
       <main className='container max-w-7xl py-8'>
         {/* Encabezado */}
-        <div className='mb-8'>
-          <h1 className='text-3xl font-bold'>Licitaciones TI</h1>
-          <p className='text-muted-foreground mt-2'>
-            Monitorea en tiempo real las licitaciones de tecnología del Mercado Público de Chile
-          </p>
+        <div className='mb-8 flex items-start justify-between gap-4'>
+          <div>
+            <h1 className='text-3xl font-bold'>Licitaciones TI</h1>
+            <p className='text-muted-foreground mt-2'>
+              Monitorea en tiempo real las licitaciones de tecnología del Mercado Público de Chile
+            </p>
+          </div>
+          <button
+            onClick={handleSync}
+            disabled={sincronizando}
+            className='flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors shrink-0'
+          >
+            <RefreshCw className={`h-4 w-4 ${sincronizando ? 'animate-spin' : ''}`} />
+            {sincronizando ? 'Actualizando...' : 'Actualizar'}
+          </button>
         </div>
+
+        {/* Mensaje sync */}
+        {mensajeSync && (
+          <div className={`mb-6 p-3 rounded-lg text-sm ${
+            mensajeSync.tipo === 'ok'
+              ? 'bg-green-500/10 border border-green-500/30 text-green-700 dark:text-green-400'
+              : 'bg-destructive/10 border border-destructive/50 text-destructive'
+          }`}>
+            {mensajeSync.texto}
+          </div>
+        )}
 
         {/* Error */}
         {error && (
