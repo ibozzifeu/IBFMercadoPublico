@@ -29,11 +29,11 @@ Aplicación web para monitorear en tiempo real las licitaciones de tecnología d
 
 ```bash
 # 1. Clonar el repositorio
-git clone <repo-url>
+git clone https://github.com/carlosmartinezcl/MercadoPublico.git
 cd MercadoPublico
 
 # 2. Instalar dependencias
-npm install
+npm install --legacy-peer-deps
 
 # 3. Configurar variables de entorno
 cp .env.example .env.local
@@ -56,7 +56,7 @@ Copiar `.env.example` a `.env.local` y completar:
 # Base de datos
 DATABASE_URL="postgresql://usuario:password@localhost:5432/mercado_publico"
 
-# API Mercado Público (sin prefijo NEXT_PUBLIC — es un secreto de servidor)
+# API Mercado Público (server-only, sin prefijo NEXT_PUBLIC_)
 MP_TICKET=tu_ticket_aqui
 MP_BASE_URL=https://api.mercadopublico.cl/servicios/v1/publico
 
@@ -75,7 +75,7 @@ CRON_SECRET=tu_secret_para_cron
 SYNC_INTERVAL_MINUTES=60
 ```
 
-> **Importante:** Las variables sin prefijo `NEXT_PUBLIC_` solo son accesibles en el servidor. Nunca uses `NEXT_PUBLIC_` para tickets, API keys o secrets.
+> **Importante:** Variables sin prefijo `NEXT_PUBLIC_` son server-only. Nunca usar `NEXT_PUBLIC_` para tickets, API keys o secrets — quedan expuestos en el bundle del browser.
 
 ---
 
@@ -85,32 +85,35 @@ SYNC_INTERVAL_MINUTES=60
 src/
 ├── app/
 │   ├── api/
-│   │   ├── auth/[...nextauth]/route.ts   # Handler NextAuth
+│   │   ├── auth/[...nextauth]/route.ts   # Handler NextAuth v5
 │   │   ├── licitaciones/
 │   │   │   ├── route.ts                  # GET /api/licitaciones
 │   │   │   └── [codigo]/route.ts         # GET /api/licitaciones/[codigo]
 │   │   ├── analizar/route.ts             # POST /api/analizar
 │   │   └── sync/route.ts                 # POST /api/sync
 │   ├── licitaciones/
-│   │   ├── page.tsx                      # Listado con filtros
-│   │   └── [codigo]/page.tsx             # Detalle de licitación
+│   │   ├── page.tsx                      # Listado con filtros y botón Actualizar
+│   │   └── [codigo]/page.tsx             # Detalle de licitación + análisis IA
 │   └── login/page.tsx                    # Formulario de login
 ├── auth.ts                               # Configuración NextAuth v5
 ├── middleware.ts                         # Protección de rutas
 ├── lib/
 │   ├── api/
-│   │   ├── db.ts                         # Cliente Prisma (singleton)
+│   │   ├── db.ts                         # Cliente Prisma singleton (exporta `db`)
 │   │   ├── gemini.ts                     # Cliente Gemini API
-│   │   └── mercadoPublico.ts             # Cliente API Mercado Público
+│   │   └── mercadoPublico.ts             # Cliente API Mercado Público (server-only)
 │   ├── services/
 │   │   ├── sync.ts                       # Sincronización con Mercado Público
 │   │   ├── clasificador.ts               # Clasificación TI por palabras clave
 │   │   └── estadisticas.ts               # Queries agregadas para dashboard
 │   ├── hooks/
 │   │   └── useLicitaciones.ts            # Hook de listado con filtros
+│   ├── utils/
+│   │   ├── fechas.ts                     # Utilidades de fecha (client-safe)
+│   │   └── cn.ts                         # Merge de clases Tailwind
 │   └── ratelimit.ts                      # Rate limiter en memoria
 ├── components/
-│   ├── comun/                            # Header, Card, Badge, Button, etc.
+│   ├── comun/                            # Header, Card, Badge, Button, Loading
 │   └── licitaciones/                     # TarjetaLicitacion, FiltrosCategorias, BuscaTexto
 └── types/
     ├── licitacion.ts                     # Tipos internos
@@ -125,8 +128,8 @@ src/
 |--------|------|------|------------|-------------|
 | `GET` | `/api/licitaciones` | NextAuth | 10/min | Listado con filtros |
 | `GET` | `/api/licitaciones/[codigo]` | NextAuth | 10/min | Detalle con items y análisis |
-| `POST` | `/api/analizar` | NextAuth | 10/min | Genera análisis con Gemini |
-| `POST` | `/api/sync` | CRON_SECRET | — | Sincroniza desde Mercado Público |
+| `POST` | `/api/analizar` | NextAuth | 10/min | Genera análisis con Gemini (cacheado) |
+| `POST` | `/api/sync` | NextAuth o CRON_SECRET | — | Sincroniza desde Mercado Público |
 
 ### Parámetros de `/api/licitaciones`
 
@@ -136,7 +139,7 @@ src/
 | `busqueda` | string | Búsqueda en nombre, descripción y código |
 | `ordenarPor` | `fechaCierre` \| `nombre` | Ordenamiento |
 
-### Llamar a `/api/sync`
+### Llamar a `/api/sync` desde cron externo
 
 ```bash
 curl -X POST http://localhost:3000/api/sync \
@@ -147,7 +150,7 @@ curl -X POST http://localhost:3000/api/sync \
 
 ## Categorías TI
 
-El clasificador asigna automáticamente cada licitación a una de estas categorías usando palabras clave ponderadas:
+El clasificador asigna automáticamente cada licitación usando palabras clave ponderadas:
 
 | Categoría | Ejemplos |
 |-----------|---------|
@@ -167,7 +170,7 @@ El clasificador asigna automáticamente cada licitación a una de estas categor�
 ```
 licitaciones              — Datos principales de cada licitación
 items_licitacion          — Productos/servicios solicitados
-analisis_ia               — Análisis generados por Gemini (cacheados)
+analisis_ia               — Análisis generados por Gemini (cacheados por tipo)
 historial_sincronizacion  — Registro de cada ejecución de sync
 ```
 
@@ -184,7 +187,7 @@ npx prisma generate        # Regenerar Prisma Client
 
 ## Autenticación
 
-NextAuth v5 con provider de credenciales. Las credenciales se configuran en `.env.local`:
+NextAuth v5 con credentials provider. Credenciales en `.env.local`:
 
 ```env
 AUTH_USERNAME=admin
@@ -192,31 +195,30 @@ AUTH_PASSWORD=tu_password_seguro
 ```
 
 - Sesión JWT con duración de 8 horas
-- Rutas protegidas: `/licitaciones/*`, `/dashboard/*`, `/api/licitaciones/*`, `/api/analizar/*`
+- Rutas protegidas: `/licitaciones/*`, `/dashboard/*`, `/api/licitaciones/*`, `/api/analizar/*`, `/api/sync`
 - Las rutas de API devuelven `401 JSON` (no redirect) para no romper los `fetch()` del cliente
+- `/api/sync` acepta sesión NextAuth activa **o** header `x-cron-secret`
 
 ---
 
 ## Rate Limiting
 
-Implementado en memoria: **10 requests por minuto por IP**.
+En memoria: **10 requests por minuto por IP**.
 
-Los headers de respuesta informan el estado:
-
+Headers de respuesta:
 ```
 X-RateLimit-Limit: 10
 X-RateLimit-Remaining: 7
 X-RateLimit-Reset: 1713392400
-Retry-After: 0
 ```
 
-> Para producción con múltiples instancias (Vercel, etc.) reemplazar por Redis/Upstash.
+> Para producción con múltiples instancias reemplazar por Redis/Upstash.
 
 ---
 
-## Sincronización automática
+## Sincronización
 
-Para ejecutar la sincronización cada hora se puede usar un cron job o Vercel Cron Jobs:
+El botón **Actualizar** en la página de licitaciones ejecuta la sincronización desde la UI. También puede llamarse vía cron:
 
 ```json
 // vercel.json
@@ -226,11 +228,6 @@ Para ejecutar la sincronización cada hora se puede usar un cron job o Vercel Cr
     "schedule": "0 * * * *"
   }]
 }
-```
-
-Y agregar el header en la llamada:
-```
-x-cron-secret: TU_CRON_SECRET
 ```
 
 ---
@@ -253,7 +250,8 @@ npm run prisma:reset   # Resetear BD
 
 ## Notas de seguridad
 
-- `MP_TICKET` y `GEMINI_API_KEY` son variables de servidor — nunca agregar prefijo `NEXT_PUBLIC_`
+- `MP_TICKET` y `GEMINI_API_KEY` son variables server-only — sin prefijo `NEXT_PUBLIC_`
 - `.env.local` está en `.gitignore` — nunca commitear credenciales reales
 - `AUTH_SECRET` debe generarse con `openssl rand -hex 32`
-- El endpoint `/api/sync` está protegido por `CRON_SECRET` en el header `x-cron-secret`, no por NextAuth
+- Utilidades de fecha (`diasHastaCierre`, `determinarUrgencia`) en `lib/utils/fechas.ts` son client-safe; el cliente HTTP de Mercado Público en `lib/api/mercadoPublico.ts` es server-only
+- No nombrar funciones internas `fetch` en componentes React — pisa el global del browser
