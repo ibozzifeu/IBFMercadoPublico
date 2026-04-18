@@ -3,7 +3,7 @@
  */
 
 import { db } from '@/lib/api/db'
-import { obtenerLicitacionesActivas, extraerComprador } from '@/lib/api/mercadoPublico'
+import { obtenerLicitacionesActivas, obtenerDetalleLicitacion, extraerComprador } from '@/lib/api/mercadoPublico'
 import { parsearFecha } from '@/lib/utils/fechas'
 import { clasificarLicitacion } from '@/lib/services/clasificador'
 import { clasificarConOllama, isOllamaAvailable } from '@/lib/api/ollama'
@@ -129,7 +129,7 @@ async function transformarLicitacion(raw: MercadoPublicoLicitacion): Promise<Tra
     compradorComuna: comprador.compradorComuna ?? null,
     compradorDireccion: comprador.compradorDireccion ?? null,
     usuarioNombre: comprador.usuarioNombre ?? null,
-    usuarioCargo: null,
+    usuarioCargo: comprador.usuarioCargo ?? null,
     usuarioEmail: null,
     usuarioRut: comprador.usuarioRut ?? null,
   }
@@ -164,60 +164,105 @@ export async function sincronizarLicitaciones(): Promise<ResultadoSync> {
   })
 
   try {
-    // Obtener licitaciones activas de la API
+    // Obtener lista de licitaciones activas (datos básicos)
     const respuesta = await obtenerLicitacionesActivas()
     const lista = respuesta.Listado ?? []
 
-    // Procesar en lotes de 10 para no saturar la BD
-    const LOTE = 10
-    for (let i = 0; i < lista.length; i += LOTE) {
-      const lote = lista.slice(i, i + LOTE)
+    // Determinar cuáles son nuevas (sin registro en BD) para enriquecer solo esas
+    const codigosExistentes = new Set(
+      (await db.licitacion.findMany({
+        where: { codigoExterno: { in: lista.map((l) => l.CodigoExterno) } },
+        select: { codigoExterno: true },
+      })).map((l) => l.codigoExterno)
+    )
+    const nuevasEnLista = lista.filter((l) => !codigosExistentes.has(l.CodigoExterno))
 
+    // Enriquecer con detalle solo las nuevas (2 concurrentes + delay para respetar rate limit)
+    const CONCURRENCIA_API = 2
+    const DELAY_ENTRE_LOTES_MS = 500
+    const detallesNuevas = new Map<string, typeof lista[0]>()
+    for (let i = 0; i < nuevasEnLista.length; i += CONCURRENCIA_API) {
+      const lote = nuevasEnLista.slice(i, i + CONCURRENCIA_API)
+      const resultados = await Promise.allSettled(
+        lote.map((raw) => obtenerDetalleLicitacion(raw.CodigoExterno))
+      )
+      for (let j = 0; j < lote.length; j++) {
+        const det = resultados[j]
+        detallesNuevas.set(lote[j].CodigoExterno, det.status === 'fulfilled' && det.value ? det.value : lote[j])
+      }
+      if (i + CONCURRENCIA_API < nuevasEnLista.length) {
+        await new Promise((r) => setTimeout(r, DELAY_ENTRE_LOTES_MS))
+      }
+    }
+
+    // Combinar: existentes usan datos del listado, nuevas usan detalle completo
+    const listadoEnriquecido = lista.map((raw) => detallesNuevas.get(raw.CodigoExterno) ?? raw)
+
+    console.log(`📋 ${lista.length} total | ${codigosExistentes.size} existentes | ${nuevasEnLista.length} nuevas con detalle`)
+
+    // ── NUEVAS: clasificar + crear con items ─────────────────────────────────
+    const LOTE = 10
+    const listaNew = listadoEnriquecido.filter((r) => !codigosExistentes.has(r.CodigoExterno))
+    for (let i = 0; i < listaNew.length; i += LOTE) {
+      const lote = listaNew.slice(i, i + LOTE)
       await Promise.all(
         lote.map(async (raw) => {
           try {
             const { datos, usedOllama: ollama, usedGPU: gpu } = await transformarLicitacion(raw)
-
             if (ollama) usedOllama = true
             if (gpu) usedGPU = true
 
-            // Verificar si ya existe
-            const existente = await db.licitacion.findUnique({
-              where: { codigoExterno: raw.CodigoExterno },
-              select: { id: true },
+            const items = raw.Items?.Listado?.map((item, idx) => ({
+              correlativo: item.Correlativo ?? idx + 1,
+              nombreProducto: item.NombreProducto,
+              descripcion: item.Descripcion ?? null,
+              unidadMedida: item.UnidadMedida ?? 'Unidad',
+              cantidad: item.Cantidad ?? 1,
+              codigoProducto: item.CodigoProducto ?? null,
+              codigoCategoria: item.CodigoCategoria ?? null,
+            })) ?? []
+
+            await db.licitacion.create({
+              data: { ...datos, items: items.length > 0 ? { create: items } : undefined },
             })
-
-            if (existente) {
-              // Actualizar
-              await db.licitacion.update({
-                where: { codigoExterno: raw.CodigoExterno },
-                data: datos,
-              })
-              actualizadas++
-            } else {
-              // Crear con sus items
-              const items = raw.Items?.Listado?.map((item, idx) => ({
-                correlativo: item.Correlativo ?? idx + 1,
-                nombreProducto: item.NombreProducto,
-                descripcion: item.Descripcion ?? null,
-                unidadMedida: item.UnidadMedida ?? 'Unidad',
-                cantidad: item.Cantidad ?? 1,
-                codigoProducto: item.CodigoProducto ?? null,
-                codigoCategoria: item.CodigoCategoria ?? null,
-              })) ?? []
-
-              await db.licitacion.create({
-                data: {
-                  ...datos,
-                  items: items.length > 0 ? { create: items } : undefined,
-                },
-              })
-              nuevas++
-            }
-
+            nuevas++
             procesadas++
           } catch (err) {
-            const msg = `Error en ${raw.CodigoExterno}: ${err instanceof Error ? err.message : String(err)}`
+            const msg = `Error creando ${raw.CodigoExterno}: ${err instanceof Error ? err.message : String(err)}`
+            errores.push(msg)
+            console.error(msg)
+          }
+        })
+      )
+    }
+
+    // ── EXISTENTES: actualizar solo campos básicos sin reclasificar ───────────
+    const listaExistente = lista.filter((r) => codigosExistentes.has(r.CodigoExterno))
+    for (let i = 0; i < listaExistente.length; i += LOTE) {
+      const lote = listaExistente.slice(i, i + LOTE)
+      await Promise.all(
+        lote.map(async (raw) => {
+          try {
+            const comprador = extraerComprador(raw)
+            await db.licitacion.update({
+              where: { codigoExterno: raw.CodigoExterno },
+              data: {
+                nombre: raw.Nombre,
+                estado: raw.Estado ?? 'Activa',
+                codigoEstado: raw.CodigoEstado,
+                fechaCierre: parsearFecha(raw.FechaCierre ?? raw.Fechas?.FechaCierre),
+                fechaPublicacion: parsearFecha(raw.Fechas?.FechaPublicacion),
+                moneda: raw.Moneda ?? null,
+                montoEstimado: raw.MontoEstimado ?? null,
+                itemsCantidad: raw.Items?.Cantidad ?? 0,
+                compradorNombre: comprador.compradorNombre ?? null,
+                compradorRegion: comprador.compradorRegion ?? null,
+              },
+            })
+            actualizadas++
+            procesadas++
+          } catch (err) {
+            const msg = `Error actualizando ${raw.CodigoExterno}: ${err instanceof Error ? err.message : String(err)}`
             errores.push(msg)
             console.error(msg)
           }

@@ -3,7 +3,7 @@ import { sincronizarLicitaciones } from '@/lib/services/sync'
 import { auth } from '@/auth'
 
 export const dynamic = 'force-dynamic'
-export const maxDuration = 60
+export const maxDuration = 120
 
 export async function POST(request: NextRequest) {
   // Aceptar sesión NextAuth (llamada desde la UI) o CRON_SECRET (llamada externa)

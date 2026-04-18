@@ -3,7 +3,7 @@
  */
 
 import axios from 'axios'
-import { MercadoPublicoResponse } from '@/types/api'
+import { MercadoPublicoResponse, MercadoPublicoLicitacion } from '@/types/api'
 
 const API_BASE_URL = process.env.MP_BASE_URL
 const API_TICKET = process.env.MP_TICKET
@@ -60,6 +60,22 @@ export async function obtenerLicitacionPorCodigo(
   } catch (error) {
     console.error(`Error al obtener licitación ${codigo}:`, error)
     throw new Error(`No se pudo obtener la licitación ${codigo}`)
+  }
+}
+
+/**
+ * Obtener detalle completo de una licitación por código externo.
+ * Retorna null si falla (permite fallback a datos básicos del listado).
+ */
+export async function obtenerDetalleLicitacion(
+  codigo: string
+): Promise<MercadoPublicoLicitacion | null> {
+  try {
+    const respuesta = await obtenerLicitacionPorCodigo(codigo)
+    return respuesta.Listado?.[0] ?? null
+  } catch {
+    console.warn(`[mercadoPublico] Sin detalle para ${codigo}, usando datos del listado`)
+    return null
   }
 }
 

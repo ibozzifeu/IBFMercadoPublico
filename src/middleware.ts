@@ -16,7 +16,6 @@ export const config = {
   matcher: [
     '/api/licitaciones/:path*',
     '/api/analizar/:path*',
-    '/api/sync',
     '/licitaciones/:path*',
     '/dashboard/:path*',
   ],
