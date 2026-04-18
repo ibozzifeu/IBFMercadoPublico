@@ -2,6 +2,33 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Reglas de trabajo
+
+**Cuenta GitHub:** Al inicio de cada sesión, verificar que la cuenta activa de gh sea carlosmartinezcl. Si no lo es, ejecutar `gh auth switch --user carlosmartinezcl` antes de cualquier operación con el repositorio remoto.
+
+**Sincronización con remoto:** Después de verificar la cuenta, ejecutar `git fetch origin` y comparar con la rama local (`git log HEAD..origin/main --oneline`). Si el remoto tiene commits más nuevos: (a) si el working tree está limpio → `git pull origin main`; (b) si hay cambios locales sin commitear → avisar a Carlos antes de proceder.
+
+**Análisis de cambios:** Cuando se solicite un análisis de cambio, preparar un listado de pasos sugeridos SIN realizar modificaciones. Siempre pedir aprobación de Carlos antes de aplicar los cambios.
+
+**Cambios riesgosos:** Si un cambio involucra riesgos (por ejemplo, alterar registros de base de datos o similares), preguntar 2 VECES EN MAYÚSCULAS si estás de acuerdo antes de proceder.
+
+**Convención de commits:** Usar siempre el formato `tipo: descripción en español`. Tipos válidos: `feat` (nueva funcionalidad), `fix` (corrección de bug), `chore` (tareas de mantenimiento), `docs` (documentación), `refactor` (reestructuración sin cambio de comportamiento), `style` (formato/estilos). No usar mensajes vagos como "arreglos" o "wip".
+
+**Migraciones SQL:** Cualquier cambio de schema en PostgreSQL (tablas, columnas, índices) debe presentarse primero como script SQL completo para revisión de Carlos. No ejecutar ninguna migración sin aprobación explícita.
+
+**Ramas para features no triviales:** Cambios que afecten múltiples archivos, rutas de API o el schema de base de datos deben desarrollarse en una rama separada (`feature/nombre-feature`). Solo se hace merge a main cuando la feature está completa y revisada. Cambios pequeños y aislados pueden ir directo a main.
+
+## Token Efficient Rules
+
+- Think before acting. Read existing files before writing code.
+- Be concise in output but thorough in reasoning.
+- Prefer editing over rewriting whole files.
+- Do not re-read files you have already read unless the file may have changed.
+- Test your code before declaring done.
+- No sycophantic openers or closing fluff.
+- Keep solutions simple and direct.
+- User instructions always override this file.
+
 ## Commands
 
 ```bash
