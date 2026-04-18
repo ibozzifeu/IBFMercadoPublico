@@ -3,7 +3,8 @@
  */
 
 export enum Categoria {
-  CLOUD = 'Cloud e Infraestructura',
+  CLOUD = 'Cloud',
+  INFRA = 'Infraestructura TI',
   HARDWARE = 'Hardware y Equipos TI',
   REDES_SEGURIDAD = 'Redes y Seguridad',
   SOFTWARE = 'Software y Licencias',

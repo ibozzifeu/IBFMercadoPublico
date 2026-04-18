@@ -75,14 +75,23 @@ export function esTI(nombre: string, descripcion?: string): boolean {
 // ---------------------------------------------------------------------------
 const CATEGORIAS: Record<Categoria, string[]> = {
   [Categoria.CLOUD]: [
-    'cloud', 'nube', 'aws', 'amazon web services',
-    'azure', 'microsoft azure', 'gcp', 'google cloud', 'oci', 'oracle cloud',
-    'saas', 'paas', 'iaas', 'hosting', 'host', 'alojamiento web',
-    'datacenter', 'data center', 'centro de datos', 'colocation',
-    'servidor virtual', 'virtualización', 'vmware', 'hyper-v',
+    'cloud', 'nube', 'en la nube',
+    'aws', 'amazon web services',
+    'azure', 'microsoft azure',
+    'gcp', 'google cloud',
+    'oci', 'oracle cloud',
+    'saas', 'paas', 'iaas',
+    'hosting', 'alojamiento web',
+    'servidor virtual', 'máquina virtual',
     'kubernetes', 'docker', 'contenedor', 'microservicio',
-    'storage', 'almacenamiento en nube', 'backup nube',
-    'servidor', 'rack', 'ups', 'san', 'nas', 'blade',
+    'almacenamiento en nube', 'backup nube', 'backup cloud',
+  ],
+  [Categoria.INFRA]: [
+    'datacenter', 'data center', 'centro de datos', 'colocation',
+    'virtualización', 'vmware', 'hyper-v',
+    'servidor', 'servidores', 'rack', 'blade',
+    'ups', 'sistema de alimentacion ininterrumpida',
+    'san', 'nas', 'storage', 'almacenamiento',
     'infraestructura ti', 'infraestructura tecnologica',
   ],
   [Categoria.HARDWARE]: [
@@ -162,22 +171,29 @@ const CATEGORIAS: Record<Categoria, string[]> = {
 // Ponderación por especificidad del término
 // ---------------------------------------------------------------------------
 const PONDERACION: Record<string, number> = {
-  // Muy específicos
-  'erp': 12, 'crm': 12, 'cms': 12,
+  // Cloud — muy específicos
   'aws': 12, 'azure': 12, 'gcp': 12, 'oci': 12,
   'saas': 11, 'paas': 11, 'iaas': 11,
-  'firewall': 11, 'vpn': 11, 'ciberseguridad': 11, 'antivirus': 10,
+  'cloud': 10, 'en la nube': 10,
+  'kubernetes': 10, 'docker': 9,
+  'hosting': 8, 'nube': 7,
+  // Infraestructura
   'datacenter': 10, 'data center': 10,
+  'vmware': 10, 'hyper-v': 10,
+  'servidor': 7, 'rack': 8, 'blade': 8,
+  'storage': 7, 'san': 7, 'nas': 7,
+  // Software
+  'erp': 12, 'crm': 12, 'cms': 12,
+  'licenciamiento': 9, 'licencia': 6,
+  // Redes y Seguridad
+  'firewall': 11, 'vpn': 11, 'ciberseguridad': 11, 'antivirus': 10,
+  'router': 9, 'switch': 9, 'fibra óptica': 9, 'fibra optica': 9,
+  // Telecom
   'voip': 10, 'pbx': 10,
+  // Hardware
   'notebook': 9, 'laptop': 9,
-  'router': 9, 'switch': 9,
-  'fibra óptica': 9, 'fibra optica': 9,
-  'helpdesk': 9, 'help desk': 9,
-  // Específicos
-  'cloud': 8, 'nube': 7,
-  'servidor': 7, 'hosting': 8,
-  'licencia': 6, 'licenciamiento': 7,
-  'soporte técnico': 7,
+  // Servicios
+  'helpdesk': 9, 'help desk': 9, 'soporte técnico': 7,
   // Genéricos (bajo peso)
   'sistema': 2, 'servicio': 2, 'red': 3, 'internet': 3,
 }
@@ -242,7 +258,7 @@ export function clasificarLicitacion(
 
   if (maxPuntuacion === 0) {
     return {
-      categoria: Categoria.CLOUD, // default TI sin categoría específica
+      categoria: Categoria.INFRA, // default TI sin categoría específica
       confianza: 10,
       razon: 'Licitación TI sin categoría específica identificada',
     }

@@ -11,7 +11,8 @@ interface FiltrosCategoriesProps {
 
 const categorias = [
   { valor: 'todas', label: 'Todas', variant: 'default' as const },
-  { valor: Categoria.CLOUD, label: 'Cloud e Infraestructura', variant: 'software' as const },
+  { valor: Categoria.CLOUD, label: 'Cloud', variant: 'software' as const },
+  { valor: Categoria.INFRA, label: 'Infraestructura TI', variant: 'software' as const },
   { valor: Categoria.HARDWARE, label: 'Hardware y Equipos TI', variant: 'hardware' as const },
   { valor: Categoria.REDES_SEGURIDAD, label: 'Redes y Seguridad', variant: 'security' as const },
   { valor: Categoria.SOFTWARE, label: 'Software y Licencias', variant: 'networks' as const },

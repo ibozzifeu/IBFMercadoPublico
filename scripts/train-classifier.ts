@@ -136,7 +136,8 @@ async function trainClassifier() {
     const prompt = `Clasifica esta licitación de tecnología en UNA de estas categorías. Responde SOLO con el nombre exacto.
 
 Categorías válidas:
-- Cloud e Infraestructura
+- Cloud
+- Infraestructura TI
 - Hardware y Equipos TI
 - Redes y Seguridad
 - Software y Licencias
@@ -227,8 +228,9 @@ function createModelfile(trainingData: DatasetRecord[]): string {
   return `FROM neural-chat
 
 SYSTEM """Eres un clasificador de licitaciones de tecnología del sector público chileno.
-Tu tarea es clasificar licitaciones en una de estas 6 categorías:
-- Cloud e Infraestructura
+Tu tarea es clasificar licitaciones en una de estas 7 categorías:
+- Cloud
+- Infraestructura TI
 - Hardware y Equipos TI
 - Redes y Seguridad
 - Software y Licencias

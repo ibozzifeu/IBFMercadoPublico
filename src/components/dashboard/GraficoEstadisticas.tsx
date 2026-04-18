@@ -10,6 +10,7 @@ interface CategoriaChartProps {
 
 const COLORES_CATEGORIA: Record<string, string> = {
   [Categoria.CLOUD]: '#0ea5e9',
+  [Categoria.INFRA]: '#6366f1',
   [Categoria.HARDWARE]: '#8b5cf6',
   [Categoria.REDES_SEGURIDAD]: '#ef4444',
   [Categoria.SOFTWARE]: '#3b82f6',

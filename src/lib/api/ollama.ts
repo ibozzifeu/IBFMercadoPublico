@@ -158,7 +158,8 @@ export async function clasificarConOllama(
     .join('\n')
 
   const prompt = `Clasifica esta licitación de tecnología en UNA de estas categorías:
-- Cloud e Infraestructura
+- Cloud
+- Infraestructura TI
 - Hardware y Equipos TI
 - Redes y Seguridad
 - Software y Licencias
@@ -194,7 +195,8 @@ Respuesta JSON:`
 
   // Mapear a Categoria
   const categoriaMap: Record<string, Categoria> = {
-    'Cloud e Infraestructura': Categoria.CLOUD,
+    'Cloud': Categoria.CLOUD,
+    'Infraestructura TI': Categoria.INFRA,
     'Hardware y Equipos TI': Categoria.HARDWARE,
     'Redes y Seguridad': Categoria.REDES_SEGURIDAD,
     'Software y Licencias': Categoria.SOFTWARE,
