@@ -133,17 +133,17 @@ async function trainClassifier() {
   }
 
   for (const record of testSample) {
-    const prompt = `Clasifica esta licitación TI en una categoría. Responde solo con el nombre de la categoría.
+    const prompt = `Clasifica esta licitación de tecnología en UNA de estas categorías. Responde SOLO con el nombre exacto.
 
 Categorías válidas:
-- Software/Sistemas
-- Hardware/Equipos
-- Redes/Telecomunicaciones
-- Seguridad TI
+- Cloud e Infraestructura
+- Hardware y Equipos TI
+- Redes y Seguridad
+- Software y Licencias
 - Servicios TI
-- Tecnología General
+- Telecomunicaciones
 
-Texto: ${record.text.substring(0, 300)}...
+Texto: ${record.text.substring(0, 300)}
 
 Categoría:`
 
@@ -226,14 +226,14 @@ function createModelfile(trainingData: DatasetRecord[]): string {
 
   return `FROM neural-chat
 
-SYSTEM """Eres un clasificador de licitaciones de Tecnología de la Información.
+SYSTEM """Eres un clasificador de licitaciones de tecnología del sector público chileno.
 Tu tarea es clasificar licitaciones en una de estas 6 categorías:
-- Software/Sistemas
-- Hardware/Equipos
-- Redes/Telecomunicaciones
-- Seguridad TI
+- Cloud e Infraestructura
+- Hardware y Equipos TI
+- Redes y Seguridad
+- Software y Licencias
 - Servicios TI
-- Tecnología General
+- Telecomunicaciones
 
 Responde SIEMPRE con SOLO el nombre exacto de una categoría, sin explicaciones.
 
