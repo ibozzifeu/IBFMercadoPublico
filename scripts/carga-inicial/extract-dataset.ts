@@ -4,7 +4,7 @@
  * Salida: data/train.jsonl y data/test.jsonl
  */
 
-import { db } from '../src/lib/api/db'
+import { db } from '../../src/lib/api/db'
 import * as fs from 'fs'
 import * as path from 'path'
 

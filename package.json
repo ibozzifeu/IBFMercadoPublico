@@ -16,10 +16,10 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "format": "prettier --write \"src/**/*.{ts,tsx,json,md}\"",
-    "ollama:setup": "bash scripts/setup-ollama.sh",
-    "ollama:extract": "npx tsx --tsconfig tsconfig.scripts.json scripts/extract-dataset.ts",
-    "ollama:train": "npx tsx --tsconfig tsconfig.scripts.json scripts/train-classifier.ts",
-    "backfill:detalles": "npx dotenv -e .env.local -- tsx --tsconfig tsconfig.scripts.json scripts/backfill-detalles.ts"
+    "ollama:setup": "bash scripts/carga-inicial/setup-ollama.sh",
+    "ollama:extract": "npx tsx --tsconfig tsconfig.scripts.json scripts/carga-inicial/extract-dataset.ts",
+    "ollama:train": "npx tsx --tsconfig tsconfig.scripts.json scripts/carga-inicial/train-classifier.ts",
+    "backfill:detalles": "npx dotenv -e .env.local -- tsx --tsconfig tsconfig.scripts.json scripts/carga-inicial/backfill-detalles.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",

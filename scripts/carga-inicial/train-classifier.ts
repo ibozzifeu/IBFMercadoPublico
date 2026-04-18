@@ -5,7 +5,7 @@
 
 import * as fs from 'fs'
 import * as path from 'path'
-import { getOllamaConfig, isOllamaAvailable } from '../src/lib/api/ollama'
+import { getOllamaConfig, isOllamaAvailable } from '../../src/lib/api/ollama'
 
 interface DatasetRecord {
   text: string
