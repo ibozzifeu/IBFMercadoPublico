@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const ordenarPor = searchParams.get('ordenarPor') || 'fechaCierre'
 
     // Construir filtros
-    const where: any = {}
+    const where: Record<string, unknown> = {}
 
     if (categoria && categoria !== 'todas') {
       where.categoria = categoria
@@ -36,12 +36,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Ordenar
-    let orderBy: any = {}
-    if (ordenarPor === 'nombre') {
-      orderBy = { nombre: 'asc' }
-    } else {
-      orderBy = { fechaCierre: 'asc' }
-    }
+    const orderBy: Record<string, string> =
+      ordenarPor === 'nombre' ? { nombre: 'asc' } : { fechaCierre: 'asc' }
 
     // Obtener total sin filtros para estadísticas
     const total = await db.licitacion.count()

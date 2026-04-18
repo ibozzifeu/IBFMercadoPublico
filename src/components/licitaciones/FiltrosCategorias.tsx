@@ -1,6 +1,5 @@
 'use client'
 
-import { Badge } from '@/components/comun/Badge'
 import { Button } from '@/components/comun/Button'
 import { Categoria } from '@/types/licitacion'
 

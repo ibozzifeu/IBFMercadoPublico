@@ -57,8 +57,12 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Generar análisis con Gemini
-    const contenido = await generarResumenEjecutivo(licitacion)
+    // Generar análisis con Gemini (mapear null → undefined para compatibilidad de tipos)
+    const contenido = await generarResumenEjecutivo({
+      ...licitacion,
+      descripcion: licitacion.descripcion ?? undefined,
+      items: licitacion.items.map((i) => ({ ...i, descripcion: i.descripcion ?? undefined })),
+    })
 
     // Guardar análisis en base de datos
     const analisis = await db.analisisIA.create({

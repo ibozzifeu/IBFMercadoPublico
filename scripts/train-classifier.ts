@@ -5,7 +5,6 @@
 
 import * as fs from 'fs'
 import * as path from 'path'
-import { execSync } from 'child_process'
 import { getOllamaConfig, isOllamaAvailable } from '../src/lib/api/ollama'
 
 interface DatasetRecord {

@@ -25,7 +25,7 @@ const client = axios.create({
  * Obtener licitaciones activas
  */
 export async function obtenerLicitacionesActivas(
-  limite: number = 100
+  _limite: number = 100
 ): Promise<MercadoPublicoResponse> {
   try {
     const response = await client.get<MercadoPublicoResponse>('/licitaciones.json', {
@@ -66,7 +66,7 @@ export async function obtenerLicitacionPorCodigo(
 /**
  * Extraer información del comprador
  */
-export function extraerComprador(data: any) {
+export function extraerComprador(data: { Comprador?: Record<string, string | undefined> }) {
   return {
     compradorNombre: data.Comprador?.NombreOrganismo,
     compradorOrganismo: data.Comprador?.CodigoOrganismo,

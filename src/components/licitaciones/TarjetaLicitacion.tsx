@@ -18,13 +18,6 @@ export function TarjetaLicitacion({ licitacion }: TarjetaLicitacionProps) {
   const dias = diasHastaCierre(licitacion.fechaCierre?.toString())
   const urgencia = dias !== null ? determinarUrgencia(dias) : 'baja'
 
-  const colorUrgencia: Record<string, string> = {
-    critica: 'destructive',
-    alta: 'pending',
-    media: 'pending',
-    baja: 'default',
-  }
-
   const labelUrgencia: Record<string, string> = {
     critica: '¡Hoy!',
     alta: 'Urgente',
@@ -40,14 +33,14 @@ export function TarjetaLicitacion({ licitacion }: TarjetaLicitacionProps) {
             <CardTitle className='text-base line-clamp-2'>{licitacion.nombre}</CardTitle>
             <CardDescription className='text-xs mt-1'>{licitacion.codigoExterno}</CardDescription>
           </div>
-          <Badge variant={urgencia as any}>{labelUrgencia[urgencia]}</Badge>
+          <Badge variant={urgencia as Parameters<typeof Badge>[0]['variant']}>{labelUrgencia[urgencia]}</Badge>
         </div>
       </CardHeader>
 
       <CardContent className='space-y-3'>
         {/* Categoría y Estado */}
         <div className='flex flex-wrap gap-2'>
-          <Badge variant={licitacion.categoria.toLowerCase().replace(/[/\s]/g, '') as any}>{licitacion.categoria}</Badge>
+          <Badge>{licitacion.categoria}</Badge>
           <Badge variant={licitacion.estado === 'Publicada' ? 'active' : 'closed'}>{licitacion.estado}</Badge>
         </div>
 

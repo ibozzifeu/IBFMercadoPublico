@@ -6,11 +6,11 @@ import { Header } from '@/components/comun/Header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/comun/Card'
 import { Badge } from '@/components/comun/Badge'
 import { Button } from '@/components/comun/Button'
-import { Loading, SkeletonCard } from '@/components/comun/Loading'
+import { Loading } from '@/components/comun/Loading'
 import { Licitacion } from '@/types/licitacion'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Building2, Calendar, DollarSign, FileText, User, ArrowLeft, Zap } from 'lucide-react'
+import { Building2, Calendar, DollarSign, FileText, ArrowLeft, Zap } from 'lucide-react'
 import Link from 'next/link'
 
 export default function DetalleLicitacionPage() {
@@ -115,7 +115,7 @@ export default function DetalleLicitacionPage() {
               <h1 className='text-3xl font-bold'>{licitacion.nombre}</h1>
               <p className='text-muted-foreground mt-2'>Código: {licitacion.codigoExterno}</p>
             </div>
-            <Badge variant={licitacion.categoria.toLowerCase().replace(/[/\s]/g, '') as any}>{licitacion.categoria}</Badge>
+            <Badge>{licitacion.categoria}</Badge>
           </div>
         </div>
 
@@ -285,7 +285,7 @@ export default function DetalleLicitacionPage() {
                 <div className='whitespace-pre-wrap text-sm'>{analisisIA}</div>
               </div>
             ) : (
-              <p className='text-sm text-muted-foreground'>Haz click en "Analizar" para generar un análisis automático con IA</p>
+              <p className='text-sm text-muted-foreground'>Haz click en &quot;Analizar&quot; para generar un análisis automático con IA</p>
             )}
           </CardContent>
         </Card>

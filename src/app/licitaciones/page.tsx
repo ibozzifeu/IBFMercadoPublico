@@ -105,7 +105,7 @@ export default function LicitacionesPage() {
             <label className='text-sm font-semibold'>Ordenar por:</label>
             <select
               value={ordenarPor}
-              onChange={(e) => setOrdenarPor(e.target.value as any)}
+              onChange={(e) => setOrdenarPor(e.target.value as 'fechaCierre' | 'nombre')}
               className='px-3 py-2 rounded-md border border-input bg-background text-sm'
             >
               <option value='fechaCierre'>Fecha de Cierre (Urgentes primero)</option>
