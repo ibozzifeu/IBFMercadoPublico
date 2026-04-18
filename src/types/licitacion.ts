@@ -3,12 +3,14 @@
  */
 
 export enum Categoria {
-  SOFTWARE = 'Software/Sistemas',
-  HARDWARE = 'Hardware/Equipos',
-  REDES = 'Redes/Telecomunicaciones',
-  SEGURIDAD = 'Seguridad TI',
+  CLOUD = 'Cloud',
+  INFRA = 'Infraestructura TI',
+  HARDWARE = 'Hardware y Equipos TI',
+  REDES_SEGURIDAD = 'Redes y Seguridad',
+  SOFTWARE = 'Software y Licencias',
   SERVICIOS = 'Servicios TI',
-  GENERAL = 'Tecnología General',
+  TELECOM = 'Telecomunicaciones',
+  NO_TI = 'No TI',
 }
 
 export type CategoriaTI = keyof typeof Categoria

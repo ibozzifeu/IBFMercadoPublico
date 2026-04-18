@@ -30,8 +30,12 @@ async function extraerDataset() {
   let totalLeidas = 0
 
   do {
+    // Excluir No TI y categorías legacy — Ollama solo clasifica licitaciones TI confirmadas
+    const EXCLUIR = ['No TI', 'Tecnología General', 'Software/Sistemas',
+      'Hardware/Equipos', 'Redes/Telecomunicaciones', 'Seguridad TI']
+
     const batch = await db.licitacion.findMany({
-      where: { categoria: { not: 'Tecnología General' } },
+      where: { categoria: { notIn: EXCLUIR } },
       include: { items: { take: 20 } },
       orderBy: { creadoEn: 'desc' },
       take: BATCH_SIZE,
@@ -70,13 +74,32 @@ async function extraerDataset() {
     console.log(`  ${cat}: ${count}`)
   })
 
-  // Shuffle registros
-  registros.sort(() => Math.random() - 0.5)
+  // Balanced sampling: limitar cada categoría al máximo de la más pequeña × 3
+  // para no sesgar el modelo hacia categorías dominantes
+  const porCategoria: Record<string, DatasetRecord[]> = {}
+  for (const r of registros) {
+    if (!porCategoria[r.categoria]) porCategoria[r.categoria] = []
+    porCategoria[r.categoria].push(r)
+  }
+
+  const minSize = Math.min(...Object.values(porCategoria).map((v) => v.length))
+  const maxPorCategoria = Math.max(minSize * 3, minSize) // hasta 3× el mínimo
+
+  const registrosBalanceados: DatasetRecord[] = []
+  for (const [cat, items] of Object.entries(porCategoria)) {
+    const cuota = Math.min(items.length, maxPorCategoria)
+    const muestra = items.sort(() => Math.random() - 0.5).slice(0, cuota)
+    registrosBalanceados.push(...muestra)
+    console.log(`  ${cat}: ${items.length} total → ${cuota} en dataset`)
+  }
+
+  // Shuffle final
+  registrosBalanceados.sort(() => Math.random() - 0.5)
 
   // Split 70/30
-  const splitIndex = Math.floor(registros.length * 0.7)
-  const train = registros.slice(0, splitIndex)
-  const test = registros.slice(splitIndex)
+  const splitIndex = Math.floor(registrosBalanceados.length * 0.7)
+  const train = registrosBalanceados.slice(0, splitIndex)
+  const test = registrosBalanceados.slice(splitIndex)
 
   console.log(`\n✂️ Split dataset:`)
   console.log(`  Entrenamiento (70%): ${train.length} registros`)

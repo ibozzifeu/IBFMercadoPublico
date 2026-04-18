@@ -11,12 +11,13 @@ interface FiltrosCategoriesProps {
 
 const categorias = [
   { valor: 'todas', label: 'Todas', variant: 'default' as const },
-  { valor: Categoria.SOFTWARE, label: 'Software/Sistemas', variant: 'software' as const },
-  { valor: Categoria.HARDWARE, label: 'Hardware/Equipos', variant: 'hardware' as const },
-  { valor: Categoria.REDES, label: 'Redes/Telecom', variant: 'networks' as const },
-  { valor: Categoria.SEGURIDAD, label: 'Seguridad TI', variant: 'security' as const },
+  { valor: Categoria.CLOUD, label: 'Cloud', variant: 'software' as const },
+  { valor: Categoria.INFRA, label: 'Infraestructura TI', variant: 'software' as const },
+  { valor: Categoria.HARDWARE, label: 'Hardware y Equipos TI', variant: 'hardware' as const },
+  { valor: Categoria.REDES_SEGURIDAD, label: 'Redes y Seguridad', variant: 'security' as const },
+  { valor: Categoria.SOFTWARE, label: 'Software y Licencias', variant: 'networks' as const },
   { valor: Categoria.SERVICIOS, label: 'Servicios TI', variant: 'services' as const },
-  { valor: Categoria.GENERAL, label: 'Tecnología General', variant: 'general' as const },
+  { valor: Categoria.TELECOM, label: 'Telecomunicaciones', variant: 'general' as const },
 ]
 
 export function FiltrosCategorias({ categoriaSeleccionada, onCategoriaChange }: FiltrosCategoriesProps) {

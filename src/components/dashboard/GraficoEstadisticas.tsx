@@ -9,12 +9,14 @@ interface CategoriaChartProps {
 }
 
 const COLORES_CATEGORIA: Record<string, string> = {
-  [Categoria.SOFTWARE]: '#3b82f6',
+  [Categoria.CLOUD]: '#0ea5e9',
+  [Categoria.INFRA]: '#6366f1',
   [Categoria.HARDWARE]: '#8b5cf6',
-  [Categoria.REDES]: '#ec4899',
-  [Categoria.SEGURIDAD]: '#ef4444',
+  [Categoria.REDES_SEGURIDAD]: '#ef4444',
+  [Categoria.SOFTWARE]: '#3b82f6',
   [Categoria.SERVICIOS]: '#f59e0b',
-  [Categoria.GENERAL]: '#6b7280',
+  [Categoria.TELECOM]: '#10b981',
+  [Categoria.NO_TI]: '#6b7280',
 }
 
 export function GraficoCategoriasBarras({ data }: CategoriaChartProps) {

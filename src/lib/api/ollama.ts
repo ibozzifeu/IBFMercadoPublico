@@ -157,13 +157,14 @@ export async function clasificarConOllama(
     .filter(Boolean)
     .join('\n')
 
-  const prompt = `Clasifica esta licitación de TI en UNA de estas categorías:
-- Software/Sistemas
-- Hardware/Equipos
-- Redes/Telecomunicaciones
-- Seguridad TI
+  const prompt = `Clasifica esta licitación de tecnología en UNA de estas categorías:
+- Cloud
+- Infraestructura TI
+- Hardware y Equipos TI
+- Redes y Seguridad
+- Software y Licencias
 - Servicios TI
-- Tecnología General
+- Telecomunicaciones
 
 Texto:
 ${textoCompleto}
@@ -194,15 +195,16 @@ Respuesta JSON:`
 
   // Mapear a Categoria
   const categoriaMap: Record<string, Categoria> = {
-    'Software/Sistemas': Categoria.SOFTWARE,
-    'Hardware/Equipos': Categoria.HARDWARE,
-    'Redes/Telecomunicaciones': Categoria.REDES,
-    'Seguridad TI': Categoria.SEGURIDAD,
+    'Cloud': Categoria.CLOUD,
+    'Infraestructura TI': Categoria.INFRA,
+    'Hardware y Equipos TI': Categoria.HARDWARE,
+    'Redes y Seguridad': Categoria.REDES_SEGURIDAD,
+    'Software y Licencias': Categoria.SOFTWARE,
     'Servicios TI': Categoria.SERVICIOS,
-    'Tecnología General': Categoria.GENERAL,
+    'Telecomunicaciones': Categoria.TELECOM,
   }
 
-  const categoria = categoriaMap[parsed.categoria ?? ''] ?? Categoria.GENERAL
+  const categoria = categoriaMap[parsed.categoria ?? ''] ?? Categoria.CLOUD
 
   return {
     categoria,
