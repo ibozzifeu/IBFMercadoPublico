@@ -36,6 +36,7 @@ model Licitacion {
   // Categorías: Software/Sistemas, Hardware/Equipos, Redes/Telecomunicaciones,
   //             Seguridad TI, Servicios TI, Tecnología General
   categoria             String   @default("Tecnología General")
+  confianzaClasificacion Float?   // Confianza 0-100 del clasificador (Ollama o heurístico)
 
   // Información del comprador/organismo
   compradorNombre       String?
@@ -74,6 +75,7 @@ model Licitacion {
   // Índices para búsquedas rápidas
   @@index([codigoExterno])
   @@index([categoria])
+  @@index([confianzaClasificacion])
   @@index([fechaCierre])
   @@index([estado])
   @@index([codigoEstado])
