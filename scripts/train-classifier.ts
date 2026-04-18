@@ -118,11 +118,11 @@ async function trainClassifier() {
   // Evaluar modelo en dataset de prueba
   console.log(`\n🧪 Evaluando modelo en ${test.length} registros...`)
 
-  // Para demo, usar solo 5 registros (evaluation real requeriría muchas llamadas API)
-  const sampleSize = Math.min(5, test.length)
+  // Usar muestra representativa (máx 50 para balance entre velocidad y confianza)
+  const sampleSize = Math.min(50, test.length)
   const testSample = test.slice(0, sampleSize)
 
-  console.log(`   (Usando muestra de ${sampleSize} registros por performance)`)
+  console.log(`   (Usando muestra de ${sampleSize} registros)`)
 
   const evalResult = {
     totalTestRecords: test.length,
@@ -156,7 +156,7 @@ Categoría:`
           prompt: prompt,
           stream: false,
         }),
-        signal: AbortSignal.timeout(30000),
+        signal: AbortSignal.timeout(90000), // 90s para GPU con carga alta
       })
 
       const data = await response.json() as { response: string }
