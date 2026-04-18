@@ -48,6 +48,10 @@ Thumbs.db
 # Optional eslint cache
 .eslintcache
 
+# Ollama dataset y modelos (pueden contener datos de licitaciones)
+data/
+Modelfile*
+
 # Yarn
 .yarn/cache
 .yarn/unplugged

@@ -5,7 +5,6 @@
  */
 
 import { db } from '../src/lib/api/db'
-import { Categoria } from '../src/types/licitacion'
 import * as fs from 'fs'
 import * as path from 'path'
 
@@ -13,6 +12,8 @@ interface DatasetRecord {
   text: string
   categoria: string
 }
+
+const BATCH_SIZE = 500
 
 async function extraerDataset() {
   console.log('📊 Extrayendo dataset de licitaciones...')
@@ -22,49 +23,47 @@ async function extraerDataset() {
     fs.mkdirSync(dataDir, { recursive: true })
   }
 
-  // Obtener todas las licitaciones con sus items
-  const licitaciones = await db.licitacion.findMany({
-    where: {
-      categoria: {
-        not: 'Tecnología General',
-      },
-    },
-    include: {
-      items: true,
-    },
-    orderBy: {
-      creadoEn: 'desc',
-    },
-  })
-
-  console.log(`Total de licitaciones encontradas: ${licitaciones.length}`)
-
-  // Preparar registros
+  // Leer en batches para no agotar memoria
   const registros: DatasetRecord[] = []
   const statsCategoria: Record<string, number> = {}
+  let cursor: string | undefined
+  let totalLeidas = 0
 
-  for (const lic of licitaciones) {
-    // Combinar texto: nombre + descripción + items
-    const textos = [lic.nombre, lic.descripcion || '']
+  do {
+    const batch = await db.licitacion.findMany({
+      where: { categoria: { not: 'Tecnología General' } },
+      include: { items: { take: 20 } },
+      orderBy: { creadoEn: 'desc' },
+      take: BATCH_SIZE,
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+    })
 
-    if (lic.items && lic.items.length > 0) {
-      textos.push(
-        ...lic.items.map((item) => `${item.nombreProducto} ${item.descripcion || ''}`)
-      )
+    if (batch.length === 0) break
+
+    cursor = batch[batch.length - 1].id
+    totalLeidas += batch.length
+    process.stdout.write(`\r  Leyendo: ${totalLeidas} licitaciones...`)
+
+    for (const lic of batch) {
+      // Combinar texto: nombre + descripción + items
+      const textos = [lic.nombre, lic.descripcion || '']
+
+      if (lic.items && lic.items.length > 0) {
+        textos.push(
+          ...lic.items.map((item) => `${item.nombreProducto} ${item.descripcion || ''}`)
+        )
+      }
+
+      const textoCompleto = textos.filter(Boolean).join(' ').trim()
+
+      if (textoCompleto.length > 10) {
+        registros.push({ text: textoCompleto, categoria: lic.categoria })
+        statsCategoria[lic.categoria] = (statsCategoria[lic.categoria] || 0) + 1
+      }
     }
+  } while (true)
 
-    const textoCompleto = textos.filter(Boolean).join(' ').trim()
-
-    if (textoCompleto.length > 10) {
-      registros.push({
-        text: textoCompleto,
-        categoria: lic.categoria,
-      })
-
-      // Contar por categoría
-      statsCategoria[lic.categoria] = (statsCategoria[lic.categoria] || 0) + 1
-    }
-  }
+  console.log(`\nTotal de licitaciones leídas: ${totalLeidas}`)
 
   console.log(`\n📈 Estadísticas por categoría:`)
   Object.entries(statsCategoria).forEach(([cat, count]) => {

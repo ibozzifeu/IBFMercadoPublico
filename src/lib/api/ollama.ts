@@ -3,8 +3,11 @@
  * Soporta GPU NVIDIA con fallback a CPU
  */
 
-import { execSync } from 'child_process'
+import { exec } from 'child_process'
+import { promisify } from 'util'
 import { Categoria } from '@/types/licitacion'
+
+const execAsync = promisify(exec)
 
 interface OllamaConfig {
   baseUrl: string
@@ -31,15 +34,14 @@ interface ClassificationResult {
 let ollamaConfig: OllamaConfig | null = null
 
 /**
- * Detectar GPU NVIDIA disponible
+ * Detectar GPU NVIDIA disponible (async, no bloquea event loop)
  */
 export async function checkNvidiaGPU(): Promise<boolean> {
   try {
-    const result = execSync('nvidia-smi --query-gpu=name --format=csv,noheader', {
-      encoding: 'utf-8',
+    const { stdout } = await execAsync('nvidia-smi --query-gpu=name --format=csv,noheader', {
       timeout: 5000,
     })
-    const gpuName = result.trim().split('\n')[0]
+    const gpuName = stdout.trim().split('\n')[0]
     console.log(`✅ GPU detectada: ${gpuName}`)
     return true
   } catch {
@@ -49,15 +51,15 @@ export async function checkNvidiaGPU(): Promise<boolean> {
 }
 
 /**
- * Obtener info de GPU
+ * Obtener info de GPU (async, no bloquea event loop)
  */
 export async function getGPUInfo(): Promise<string | null> {
   try {
-    const output = execSync('nvidia-smi --query-gpu=name,memory.total --format=csv,noheader', {
-      encoding: 'utf-8',
-      timeout: 5000,
-    })
-    return output.trim().split('\n')[0]
+    const { stdout } = await execAsync(
+      'nvidia-smi --query-gpu=name,memory.total --format=csv,noheader',
+      { timeout: 5000 }
+    )
+    return stdout.trim().split('\n')[0]
   } catch {
     return null
   }
@@ -93,6 +95,18 @@ export async function getOllamaConfig(): Promise<OllamaConfig> {
 }
 
 /**
+ * Sanitizar texto antes de inyectar en prompt LLM
+ * Previene prompt injection vía datos de la API de Mercado Público
+ */
+function sanitizarTextoPrompt(texto: string, maxChars = 500): string {
+  return texto
+    .replace(/[`"{}[\]]/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .substring(0, maxChars)
+    .trim()
+}
+
+/**
  * Llamar a Ollama API
  */
 async function callOllama(prompt: string): Promise<string> {
@@ -108,7 +122,7 @@ async function callOllama(prompt: string): Promise<string> {
         stream: false,
         temperature: 0.3,
       }),
-      signal: AbortSignal.timeout(60000), // 60s timeout
+      signal: AbortSignal.timeout(60000),
     })
 
     if (!response.ok) {
@@ -119,9 +133,8 @@ async function callOllama(prompt: string): Promise<string> {
     return data.response.trim()
   } catch (error) {
     console.error('❌ Error llamando Ollama:', error)
-    throw new Error(
-      `Ollama no disponible. Asegúrate de que está corriendo en ${config.baseUrl}`
-    )
+    // No exponer baseUrl al cliente
+    throw new Error('Clasificador ML no disponible. Usando clasificador heurístico.')
   }
 }
 
@@ -135,8 +148,12 @@ export async function clasificarConOllama(
 ): Promise<ClassificationResult> {
   const config = await getOllamaConfig()
 
-  // Preparar contexto
-  const textoCompleto = [nombre, descripcion || '', ...(items || [])]
+  // Sanitizar antes de inyectar en prompt (previene prompt injection)
+  const textoCompleto = [
+    sanitizarTextoPrompt(nombre, 200),
+    sanitizarTextoPrompt(descripcion || '', 300),
+    ...(items || []).slice(0, 5).map((i) => sanitizarTextoPrompt(i, 100)),
+  ]
     .filter(Boolean)
     .join('\n')
 
@@ -162,13 +179,18 @@ Respuesta JSON:`
 
   const respuesta = await callOllama(prompt)
 
-  // Parsear respuesta
-  const jsonMatch = respuesta.match(/\{[\s\S]*\}/)
+  // Parsear respuesta con manejo de error
+  const jsonMatch = respuesta.match(/\{[\s\S]*?\}/)
   if (!jsonMatch) {
     throw new Error('Ollama no retornó JSON válido')
   }
 
-  const parsed = JSON.parse(jsonMatch[0])
+  let parsed: { categoria?: string; confianza?: number; razon?: string }
+  try {
+    parsed = JSON.parse(jsonMatch[0])
+  } catch {
+    throw new Error(`Ollama retornó JSON malformado: ${jsonMatch[0].substring(0, 100)}`)
+  }
 
   // Mapear a Categoria
   const categoriaMap: Record<string, Categoria> = {
@@ -180,7 +202,7 @@ Respuesta JSON:`
     'Tecnología General': Categoria.GENERAL,
   }
 
-  const categoria = categoriaMap[parsed.categoria] || Categoria.GENERAL
+  const categoria = categoriaMap[parsed.categoria ?? ''] ?? Categoria.GENERAL
 
   return {
     categoria,

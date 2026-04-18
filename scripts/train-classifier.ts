@@ -90,7 +90,7 @@ async function trainClassifier() {
   // Crear Modelfile para fine-tuning
   console.log(`\n📝 Creando Modelfile para fine-tuning...`)
   const modelfile = createModelfile(train)
-  const modelfilePath = path.join(process.cwd(), 'Modelfile.training')
+  const modelfilePath = path.join(process.cwd(), 'data', 'Modelfile.training')
   fs.writeFileSync(modelfilePath, modelfile)
   console.log(`✅ Modelfile creado`)
 
@@ -212,14 +212,16 @@ Categoría:`
 }
 
 function createModelfile(trainingData: DatasetRecord[]): string {
-  // Crear ejemplos de contexto basados en datos de entrenamiento
+  // Sanitizar ejemplos para evitar escape del bloque SYSTEM """..."""
   const examples = trainingData
     .slice(0, 10)
-    .map(
-      (r) => `
-Texto: ${r.text.substring(0, 150)}...
-Categoría: ${r.categoria}`
-    )
+    .map((r) => {
+      const textoSanitizado = r.text
+        .substring(0, 150)
+        .replace(/"""/g, "'''")
+        .replace(/\\/g, '\\\\')
+      return `\nTexto: ${textoSanitizado}...\nCategoría: ${r.categoria}`
+    })
     .join('\n')
 
   return `FROM neural-chat
