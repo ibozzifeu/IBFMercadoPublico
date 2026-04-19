@@ -2,7 +2,7 @@
 
 ## Visión General
 
-Aplicación web para monitoreo y análisis de licitaciones de TI en el Mercado Público de Chile. Clasifica automáticamente en 6 categorías, permite búsqueda y filtrado en tiempo real, y genera análisis con IA (Gemini).
+Aplicación web para monitoreo y análisis de licitaciones de TI en el Mercado Público de Chile. Clasifica automáticamente en 8 categorías (7 TI + No TI) usando Ollama (LLM local), permite búsqueda y filtrado en tiempo real, y genera análisis con IA (Gemini).
 
 ```
 Browser → NextAuth JWT → Middleware → API Routes → Prisma → PostgreSQL
@@ -10,6 +10,8 @@ Browser → NextAuth JWT → Middleware → API Routes → Prisma → PostgreSQL
                                                Gemini API (on demand)
                                                        ↕
                                           API Mercado Público (sync)
+                                                       ↕
+                                          Ollama local (clasificación)
 ```
 
 ---
@@ -25,7 +27,8 @@ Browser → NextAuth JWT → Middleware → API Routes → Prisma → PostgreSQL
 | Base de Datos | PostgreSQL 14+ | Persistencia |
 | ORM | Prisma 5 | Gestión de BD y migraciones |
 | API Externa | Mercado Público API v1 | Fuente de licitaciones |
-| IA | Google Gemini 2.0 Flash | Análisis y resúmenes |
+| IA Clasificación | Ollama (neural-chat 7B) | Clasificación TI/No TI local con GPU |
+| IA Análisis | Google Gemini 2.0 Flash | Análisis y resúmenes on-demand |
 | Rate Limiting | In-memory Map | 10 req/min por IP |
 
 ---
@@ -91,7 +94,8 @@ model Licitacion {
   fechaPublicacion      DateTime?
   moneda                String?
   montoEstimado         Float?
-  categoria             String    @default("Tecnología General")
+  categoria             String    @default("No TI")
+  confianzaClasificacion Float?  // 0-100, CHECK constraint en BD (migrations/)
   compradorNombre       String?
   compradorOrganismo    String?
   compradorUnidad       String?
@@ -183,7 +187,7 @@ UI (botón Actualizar) ──→ POST /api/sync
                               ↓
                       transformarLicitacion()
                         └─ extraerComprador()
-                        └─ clasificarLicitacion() — palabras clave
+                        └─ clasificarConOllama() — LLM few-shot (fallback: heurístico)
                               ↓
                       Upsert en lotes de 10 (Promise.all)
                         └─ findUnique → update (existente)
@@ -259,6 +263,7 @@ Las API keys y tokens van **sin** prefijo `NEXT_PUBLIC_` — quedan en el servid
 |----------|-------|
 | `MP_TICKET`, `MP_BASE_URL` | Server-only |
 | `GEMINI_API_KEY`, `GEMINI_MODEL` | Server-only |
+| `OLLAMA_URL`, `OLLAMA_MODEL` | Server-only (default: localhost:11434, neural-chat) |
 | `AUTH_SECRET`, `AUTH_USERNAME`, `AUTH_PASSWORD` | Server-only |
 | `CRON_SECRET` | Server-only |
 | `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_APP_ENV` | Cliente (no son secretos) |
@@ -282,21 +287,33 @@ Un error frecuente es importar módulos server-only en componentes cliente:
 | `lib/api/db.ts` | **Server-only** | PrismaClient no corre en browser |
 | `lib/utils/fechas.ts` | **Client-safe** | Funciones puras sin env vars |
 | `lib/utils/cn.ts` | **Client-safe** | Función pura |
-| `lib/services/clasificador.ts` | **Client-safe** | Diccionario estático |
+| `lib/services/clasificador.ts` | **Client-safe** | Diccionario estático (fallback heurístico) |
+| `lib/api/ollama.ts` | **Server-only** | Cliente Ollama: clasificarConOllama, isOllamaAvailable |
 
 ---
 
-## Categorías TI — Clasificador
+## Categorías — Clasificador
 
-Lógica en `src/lib/services/clasificador.ts`:
+Clasificación primaria: **Ollama (neural-chat 7B)** con prompt few-shot. Fallback: heurístico de palabras clave (`src/lib/services/clasificador.ts`).
 
-1. Combina nombre + descripción + nombres de productos
-2. Busca coincidencias con diccionario de palabras clave por categoría
-3. Aplica pesos (ERP=10, VPN=9, servidor=7, sistema=3, servicio=2)
-4. Asigna categoría con mayor puntuación; empate → `Tecnología General`
-5. Confianza = puntuación_máx / puntuación_total × 100
+**8 categorías:**
 
-**Categorías:** Software/Sistemas · Hardware/Equipos · Redes/Telecomunicaciones · Seguridad TI · Servicios TI · Tecnología General
+| Categoría | Descripción |
+|-----------|-------------|
+| Cloud | AWS, Azure, GCP, SaaS, PaaS, Office 365 |
+| Infraestructura TI | Servidores, data center, storage, virtualización |
+| Hardware y Equipos TI | Computadores, notebooks, impresoras, tablets |
+| Redes y Seguridad | Firewalls, switches, routers, antivirus, cableado red |
+| Software y Licencias | ERP, CRM, licencias, desarrollo de apps |
+| Servicios TI | Consultoría, soporte técnico, helpdesk, migración |
+| Telecomunicaciones | Telefonía, enlaces, fibra óptica, internet corporativo |
+| **No TI** | Todo lo demás (obras civiles, fármacos, alimentos, vigilancia física…) |
+
+**Distribución real en BD (post-reclasificación 2026-04-18):**
+- No TI: ~4146 (95.8%) — licitaciones del sector público no relacionadas a TI
+- TI total: ~183 (4.2%) distribuidas en las 7 categorías
+
+**Regla del clasificador:** en caso de duda, prefiere `No TI` sobre inventar categoría TI. El fallback por defecto es también `No TI`.
 
 ---
 

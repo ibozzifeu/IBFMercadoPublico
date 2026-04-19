@@ -213,13 +213,16 @@ Categoría:`
 
 function createModelfile(trainingData: DatasetRecord[]): string {
   // Sanitizar ejemplos para evitar escape del bloque SYSTEM """..."""
+  // y neutralizar caracteres de control que podrían romper el parser
   const examples = trainingData
     .slice(0, 10)
     .map((r) => {
       const textoSanitizado = r.text
         .substring(0, 150)
-        .replace(/"""/g, "'''")
+        .replace(/[\u0000-\u001F\u007F]/g, ' ')
         .replace(/\\/g, '\\\\')
+        .replace(/"""/g, "'''")
+        .replace(/`/g, "'")
       return `\nTexto: ${textoSanitizado}...\nCategoría: ${r.categoria}`
     })
     .join('\n')

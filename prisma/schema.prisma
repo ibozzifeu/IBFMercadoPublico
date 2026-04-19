@@ -14,29 +14,32 @@ datasource db {
 // LICITACIÓN
 // ============================================================
 model Licitacion {
-  id                    String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Información básica de Mercado Público
-  codigoExterno         String   @unique
-  nombre                String
-  descripcion           String?  @db.Text
-  estado                String
-  codigoEstado          Int
+  codigoExterno String  @unique
+  nombre        String
+  descripcion   String? @db.Text
+  estado        String
+  codigoEstado  Int
 
   // Fechas importantes
-  fechaCierre           DateTime?
-  fechaCreacion         DateTime?
-  fechaPublicacion      DateTime?
+  fechaCierre      DateTime?
+  fechaCreacion    DateTime?
+  fechaPublicacion DateTime?
 
   // Información financiera
-  moneda                String?
-  montoEstimado         Float?
+  moneda        String?
+  montoEstimado Float?
 
   // Clasificación automática (6 categorías TI)
   // Categorías: Software/Sistemas, Hardware/Equipos, Redes/Telecomunicaciones,
   //             Seguridad TI, Servicios TI, Tecnología General
-  categoria             String   @default("Tecnología General")
-  confianzaClasificacion Float?   // Confianza 0-100 del clasificador (Ollama o heurístico)
+  categoria              String @default("Tecnología General")
+  /// Confianza 0-100 del clasificador (Ollama o heurístico).
+  /// CHECK constraint `confianza_clasificacion_rango` aplicado a nivel BD
+  /// (ver migrations/add_check_confianza_clasificacion.sql). Prisma no lo gestiona.
+  confianzaClasificacion Float?
 
   // Información del comprador/organismo
   compradorNombre       String?
@@ -49,28 +52,28 @@ model Licitacion {
   compradorDireccion    String?
 
   // Contacto del usuario responsable
-  usuarioNombre         String?
-  usuarioCargo          String?
-  usuarioEmail          String?
-  usuarioRut            String?
+  usuarioNombre String?
+  usuarioCargo  String?
+  usuarioEmail  String?
+  usuarioRut    String?
 
   // Información adicional
-  tipoLicitacion        String?  // L1, LE, LP, LQ, LR, E2, CO, B2, H2, I2, LS
-  codigoTipo            Int?     // 1=Pública, 2=Privada
-  itemsCantidad         Int      @default(0)
-  etapas                Int      @default(1)
+  tipoLicitacion String? // L1, LE, LP, LQ, LR, E2, CO, B2, H2, I2, LS
+  codigoTipo     Int? // 1=Pública, 2=Privada
+  itemsCantidad  Int     @default(0)
+  etapas         Int     @default(1)
 
   // URL a API Mercado Público (para referencia)
-  urlApiMercado         String?
+  urlApiMercado String?
 
   // Relaciones
-  items                 ItemLicitacion[]
-  analisisIA            AnalisisIA[]
+  items      ItemLicitacion[]
+  analisisIA AnalisisIA[]
 
   // Timestamps
-  fechaSincronizacion   DateTime @default(now()) @updatedAt
-  creadoEn              DateTime @default(now())
-  actualizadoEn         DateTime @updatedAt
+  fechaSincronizacion DateTime @default(now()) @updatedAt
+  creadoEn            DateTime @default(now())
+  actualizadoEn       DateTime @updatedAt
 
   // Índices para búsquedas rápidas
   @@index([codigoExterno])
@@ -86,23 +89,23 @@ model Licitacion {
 // ITEMS/PRODUCTOS DE UNA LICITACIÓN
 // ============================================================
 model ItemLicitacion {
-  id                String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  licitacionId      String
-  licitacion        Licitacion @relation(fields: [licitacionId], references: [id], onDelete: Cascade)
+  licitacionId String
+  licitacion   Licitacion @relation(fields: [licitacionId], references: [id], onDelete: Cascade)
 
   // Información del item
-  correlativo       Int
-  nombreProducto    String
-  descripcion       String?  @db.Text
-  unidadMedida      String
-  cantidad          Float
+  correlativo    Int
+  nombreProducto String
+  descripcion    String? @db.Text
+  unidadMedida   String
+  cantidad       Float
 
   // Códigos UNSPSC (estándar internacional de productos)
-  codigoProducto    Int?
-  codigoCategoria   String?
+  codigoProducto  Int?
+  codigoCategoria String?
 
-  creadoEn          DateTime @default(now())
+  creadoEn DateTime @default(now())
 
   @@index([licitacionId])
   @@map("items_licitacion")
@@ -112,19 +115,19 @@ model ItemLicitacion {
 // ANÁLISIS GENERADO POR IA (GEMINI)
 // ============================================================
 model AnalisisIA {
-  id                String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  licitacionId      String
-  licitacion        Licitacion @relation(fields: [licitacionId], references: [id], onDelete: Cascade)
+  licitacionId String
+  licitacion   Licitacion @relation(fields: [licitacionId], references: [id], onDelete: Cascade)
 
   // Tipo de análisis: 'resumen_ejecutivo', 'perfil_proveedor', etc.
-  tipoAnalisis      String
+  tipoAnalisis String
 
   // Contenido del análisis generado
-  contenido         String   @db.Text
+  contenido String @db.Text
 
   // Metadata asociada
-  metadata          Json?
+  metadata Json?
   // Ejemplo:
   // {
   //   "tokens_utilizados": 500,
@@ -133,7 +136,7 @@ model AnalisisIA {
   //   "temperatura": 0.7
   // }
 
-  creadoEn          DateTime @default(now())
+  creadoEn DateTime @default(now())
 
   // Una licitación solo puede tener un análisis por tipo
   @@unique([licitacionId, tipoAnalisis])
@@ -145,21 +148,21 @@ model AnalisisIA {
 // HISTORIAL DE SINCRONIZACIONES
 // ============================================================
 model HistorialSincronizacion {
-  id                      String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  fechaEjecucion          DateTime @default(now())
+  fechaEjecucion DateTime @default(now())
 
   // Estadísticas de la sincronización
-  licitacionesProcesadas  Int      @default(0)
-  licitacionesNuevas      Int      @default(0)
-  licitacionesActualizadas Int     @default(0)
+  licitacionesProcesadas   Int @default(0)
+  licitacionesNuevas       Int @default(0)
+  licitacionesActualizadas Int @default(0)
 
   // Estado y errores
-  estado                  String   // 'exitosa', 'fallida', 'parcial'
-  errorMensaje            String?  @db.Text
+  estado       String // 'exitosa', 'fallida', 'parcial'
+  errorMensaje String? @db.Text
 
   // Rendimiento
-  duracionSegundos        Float?
+  duracionSegundos Float?
 
   @@index([fechaEjecucion])
   @@map("historial_sincronizacion")

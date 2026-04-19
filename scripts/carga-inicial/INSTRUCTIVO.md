@@ -13,6 +13,11 @@ Scripts que se ejecutan **una sola vez** al levantar el sistema por primera vez,
 4. train-classifier.ts      → Entrenar modelo de clasificación con Ollama
 ```
 
+Para evaluación y corrección de clasificaciones ver `scripts/evaluacion/`:
+- `muestrear-clasificacion.ts` — reporte de muestras por categoría/confianza
+- `test-prompt-ollama.ts`      — validar prompt contra casos conocidos
+- `reclasificar-historico.ts`  — reclasificar histórico masivo (dry-run default)
+
 ---
 
 ## 1. setup-ollama.sh — Configurar Ollama

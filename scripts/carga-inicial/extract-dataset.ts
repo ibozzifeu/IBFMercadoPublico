@@ -15,6 +15,18 @@ interface DatasetRecord {
 
 const BATCH_SIZE = 500
 
+/**
+ * Redacta PII antes de persistir el dataset:
+ * las descripciones de Mercado Público pueden incluir RUT, email y fonos
+ * de responsables. Evita que filtren vía dataset o copia del modelo.
+ */
+function redactarPII(texto: string): string {
+  return texto
+    .replace(/\b\d{1,2}[.]?\d{3}[.]?\d{3}[-]?[\dkK]\b/g, '[RUT]')
+    .replace(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi, '[EMAIL]')
+    .replace(/\b(\+?56[\s-]?)?9[\s-]?\d{4}[\s-]?\d{4}\b/g, '[FONO]')
+}
+
 async function extraerDataset() {
   console.log('📊 Extrayendo dataset de licitaciones...')
 
@@ -58,7 +70,7 @@ async function extraerDataset() {
         )
       }
 
-      const textoCompleto = textos.filter(Boolean).join(' ').trim()
+      const textoCompleto = redactarPII(textos.filter(Boolean).join(' ').trim())
 
       if (textoCompleto.length > 10) {
         registros.push({ text: textoCompleto, categoria: lic.categoria })

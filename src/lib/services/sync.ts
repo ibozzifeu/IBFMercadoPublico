@@ -19,6 +19,18 @@ interface ResultadoSync {
   usedGPU: boolean
 }
 
+/**
+ * Redacta DSNs y tokens de mensajes de error antes de persistir.
+ * Evita que stack traces de Prisma filtren credenciales al historial.
+ */
+function sanitizarError(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err)
+  return raw
+    .replace(/postgres(ql)?:\/\/[^\s'"]+/gi, '[DSN]')
+    .replace(/\b[a-f0-9]{32,}\b/gi, '[TOKEN]')
+    .substring(0, 300)
+}
+
 interface TransformResultado {
   datos: {
     codigoExterno: string
@@ -228,7 +240,7 @@ export async function sincronizarLicitaciones(): Promise<ResultadoSync> {
             nuevas++
             procesadas++
           } catch (err) {
-            const msg = `Error creando ${raw.CodigoExterno}: ${err instanceof Error ? err.message : String(err)}`
+            const msg = `Error creando ${raw.CodigoExterno}: ${sanitizarError(err)}`
             errores.push(msg)
             console.error(msg)
           }
@@ -262,7 +274,7 @@ export async function sincronizarLicitaciones(): Promise<ResultadoSync> {
             actualizadas++
             procesadas++
           } catch (err) {
-            const msg = `Error actualizando ${raw.CodigoExterno}: ${err instanceof Error ? err.message : String(err)}`
+            const msg = `Error actualizando ${raw.CodigoExterno}: ${sanitizarError(err)}`
             errores.push(msg)
             console.error(msg)
           }
@@ -296,7 +308,7 @@ export async function sincronizarLicitaciones(): Promise<ResultadoSync> {
     return { procesadas, nuevas, actualizadas, errores, duracionMs, usedOllama, usedGPU }
   } catch (error) {
     const duracionMs = Date.now() - inicio
-    const msg = error instanceof Error ? error.message : 'Error desconocido'
+    const msg = sanitizarError(error)
 
     await db.historialSincronizacion.update({
       where: { id: historial.id },

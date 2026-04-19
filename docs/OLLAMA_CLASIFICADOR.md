@@ -1,154 +1,142 @@
 # Clasificador ML con Ollama
 
-Reemplaza el clasificador heurístico de palabras clave con un modelo de ML entrenado con Ollama, soportando GPU NVIDIA con fallback a CPU.
+Clasifica licitaciones de Mercado Público usando `neural-chat` (LLM local 7B) con GPU NVIDIA, soportando fallback a CPU y al clasificador heurístico de palabras clave.
 
 ## Setup inicial
 
 ### 1. Instalar Ollama
 
 ```bash
-# Descarga desde https://ollama.ai
 # En Linux:
 curl -fsSL https://ollama.ai/install.sh | sh
-
-# En Mac/Windows descarga el instalador
 ```
 
 ### 2. Ejecutar setup
 
 ```bash
-# Detecta GPU automáticamente e instala modelo
 npm run ollama:setup
 ```
 
-Esto:
-- Detecta GPU NVIDIA (RTX 4070 ✓)
-- Descarga `neural-chat` (7B, ~4.7GB)
-- Inicia Ollama en background si no está corriendo
+Esto detecta GPU NVIDIA, descarga `neural-chat` (~4.7GB) e inicia Ollama en background.
 
-## Crear dataset de entrenamiento
+---
+
+## Cómo clasifica
+
+El clasificador usa un prompt few-shot con 8 categorías + regla de desempate:
+
+**Categorías TI:** Cloud · Infraestructura TI · Hardware y Equipos TI · Redes y Seguridad · Software y Licencias · Servicios TI · Telecomunicaciones
+
+**Categoría No TI:** obras civiles, fármacos, vigilancia física, alimentos, insumos médicos, servicios no digitales.
+
+**Regla crítica:** en caso de duda, prefiere `No TI`. El fallback por defecto también es `No TI`.
+
+El prompt incluye ejemplos positivos (firewalls → Redes y Seguridad, notebooks → Hardware) y negativos (neumáticos → No TI, medicamentos → No TI, puentes MOP → No TI).
+
+---
+
+## Scripts de evaluación y mantenimiento
 
 ```bash
-# Extrae licitaciones de BD, aplica split 70/30
-npm run ollama:extract
+# Generar reporte de muestreo manual (256 muestras por categoría/confianza)
+npx dotenv -e .env.local -- tsx --tsconfig tsconfig.scripts.json \
+  scripts/evaluacion/muestrear-clasificacion.ts
+# Salida: data/evaluacion-clasificacion.md
+
+# Test del prompt contra casos conocidos (15 casos, TP y FP)
+npx dotenv -e .env.local -- tsx --tsconfig tsconfig.scripts.json \
+  scripts/evaluacion/test-prompt-ollama.ts
+
+# Reclasificación masiva del histórico (dry-run por defecto)
+npx dotenv -e .env.local -- tsx --tsconfig tsconfig.scripts.json \
+  scripts/evaluacion/reclasificar-historico.ts
+# Con --apply escribe a BD; con --limite=N procesa solo N registros
 ```
 
-Genera:
-- `data/train.jsonl` — 70% entrenamiento
-- `data/test.jsonl` — 30% evaluación
-- Estadísticas por categoría
-
-Requiere datos en BD con categorías ya asignadas (usa el clasificador actual para inicializar).
-
-## Entrenar modelo
-
-```bash
-# Entrena con dataset 70%
-npm run ollama:train
-```
-
-Genera:
-- `data/training-metadata.json` — info del entrenamiento
-- `data/evaluation-results.json` — accuracy por categoría
-- Salida: categorías, confianza, razón
-
-**Duración:**
-- Con GPU: ~10-15 minutos (muestra de prueba)
-- Con CPU: ~30-45 minutos
-
-## Variables de entorno
-
-Agregar a `.env.local`:
-
-```env
-# Ollama
-OLLAMA_URL=http://localhost:11434
-OLLAMA_MODEL=neural-chat
-OLLAMA_GPU=1  # Detectado automáticamente
-```
+---
 
 ## Integración en API
 
-El cliente Ollama está en `src/lib/api/ollama.ts`:
+El cliente está en `src/lib/api/ollama.ts`:
 
 ```typescript
-import { clasificarConOllama } from '@/lib/api/ollama'
+import { clasificarConOllama, isOllamaAvailable } from '@/lib/api/ollama'
 
-const resultado = await clasificarConOllama(
-  nombre,
-  descripcion,
-  itemsDescripciones
-)
+const resultado = await clasificarConOllama(nombre, descripcion, items)
 // → { categoria, confianza, razon, usedGPU }
 ```
 
-### En `/api/sync`
+### Flujo en `/api/sync`
 
-Cambiar línea del clasificador:
-
-```typescript
-// Antes (palabras clave)
-const { categoria } = clasificarLicitacion(...)
-
-// Después (Ollama)
-const { categoria } = await clasificarConOllama(...)
 ```
+licitación nueva
+      ↓
+clasificarConOllama() — Ollama disponible?
+  └─ Sí → prompt few-shot → { categoria, confianza }
+  └─ No → clasificarLicitacion() — heurístico palabras clave (fallback)
+      ↓
+db.licitacion.create({ ...datos, confianzaClasificacion: confianza })
+```
+
+Las licitaciones **existentes** no se reclasifican en sync — solo actualizan campos básicos (estado, fechas, montos).
+
+---
+
+## Variables de entorno
+
+```env
+OLLAMA_URL=http://localhost:11434   # Host validado contra allowlist (localhost, IPs privadas, .internal)
+OLLAMA_MODEL=neural-chat
+```
+
+---
 
 ## Monitoreo
 
-### GPU durante entrenamiento
-
 ```bash
-# En otra terminal
+# GPU durante clasificación
 watch -n 1 'nvidia-smi --query-gpu=name,memory.used,memory.total --format=csv,noheader'
-```
 
-### Logs de Ollama
+# Health check
+curl http://localhost:11434/api/tags
 
-```bash
+# Logs de Ollama
 tail -f /tmp/ollama.log
 ```
 
-### Health check
-
-```bash
-curl http://localhost:11434/api/tags
-```
+---
 
 ## Troubleshooting
 
 ### "Ollama no disponible"
-
 ```bash
-# Iniciar manualmente
 ollama serve
-
-# O si quieres background:
+# o en background:
 nohup ollama serve > /tmp/ollama.log 2>&1 &
 ```
 
 ### Modelo no encontrado
-
 ```bash
 ollama pull neural-chat
 ```
 
 ### GPU no detectada
-
 ```bash
-# Verificar
 nvidia-smi
-
-# Logs
 tail -f /tmp/ollama.log | grep -i cuda
 ```
 
-### Bajo accuracy en evaluación
+### Clasificaciones incorrectas en el histórico
 
-Aumentar dataset:
-1. Etiquetar más licitaciones manualmente
-2. Ejecutar `npm run ollama:extract` nuevamente
-3. Ejecutar `npm run ollama:train`
+Si se detectan patrones de error masivos (falsos positivos de categoría):
+
+1. Revisar muestras: `scripts/evaluacion/muestrear-clasificacion.ts`
+2. Testear el prompt actual: `scripts/evaluacion/test-prompt-ollama.ts`
+3. Ajustar el prompt en `src/lib/api/ollama.ts → clasificarConOllama()`
+4. Reclasificar histórico: `scripts/evaluacion/reclasificar-historico.ts --apply`
+   (crea backup automático en `data/` antes de escribir)
+
+---
 
 ## Arquitectura
 
@@ -159,45 +147,34 @@ API Mercado Público
         ↓
   clasificarConOllama()
         ↓
-  checkNvidiaGPU() → GPU NVIDIA o CPU
+  validarOllamaUrl()     — allowlist host (SSRF protection)
+  sanitizarTextoPrompt() — strip prompt injection chars
         ↓
   fetch("http://localhost:11434/api/generate")
         ↓
-  neural-chat model
+  neural-chat 7B (GPU RTX 4070 / CPU fallback)
         ↓
-  { categoria, confianza, razon }
+  { categoria, confianza, razon }   — mapeado a enum Categoria
         ↓
     PostgreSQL
 ```
 
+---
+
 ## Modelos alternativos
 
-| Modelo | Tamaño | VRAM | Velocidad | Accuracy |
-|--------|--------|------|-----------|----------|
-| neural-chat | 7B | 4.7GB | ⭐⭐⭐ | ⭐⭐⭐ |
-| mistral | 7B | 4GB | ⭐⭐⭐⭐ | ⭐⭐ |
-| llama2 | 7B | 4GB | ⭐⭐ | ⭐⭐⭐ |
-| orca-mini | 3B | 2GB | ⭐⭐⭐⭐ | ⭐ |
+| Modelo | Tamaño | VRAM | Velocidad |
+|--------|--------|------|-----------|
+| neural-chat | 7B | 4.7GB | ⭐⭐⭐ |
+| mistral | 7B | 4GB | ⭐⭐⭐⭐ |
+| llama2 | 7B | 4GB | ⭐⭐ |
 
 Cambiar en `.env.local`: `OLLAMA_MODEL=mistral`
 
-## Fallback a palabras clave
+---
 
-Si Ollama no está disponible, la clasificación falla safe:
+## Seguridad
 
-```typescript
-try {
-  resultado = await clasificarConOllama(...)
-} catch {
-  // Fallback a heurístico
-  resultado = clasificarLicitacion(...)
-}
-```
-
-## Roadmap
-
-- [ ] Fine-tuning completo cuando Ollama lo soporte
-- [ ] Cache de clasificaciones (Redis)
-- [ ] Reentrenamiento automático
-- [ ] Métricas en dashboard
-- [ ] A/B testing Ollama vs heurístico
+- `OLLAMA_URL` validada contra allowlist (localhost, IPs RFC 1918, `.internal`) — evita SSRF
+- Texto de licitación sanitizado antes del prompt (chars de control, palabras de inyección) y envuelto en `<texto_licitacion>...</texto_licitacion>`
+- Error messages redactados antes de persistir en historial (no filtra DSN/tokens)
