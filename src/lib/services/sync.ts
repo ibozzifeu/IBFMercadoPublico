@@ -248,7 +248,15 @@ export async function sincronizarLicitaciones(): Promise<ResultadoSync> {
       )
     }
 
-    // ── EXISTENTES: actualizar solo campos básicos sin reclasificar ───────────
+    // ── EXISTENTES: actualizar campos básicos, descripción e items ──────────
+    // Primero: obtener IDs de licitaciones existentes para optimizar transacciones
+    const licitacionesIdMap = new Map(
+      (await db.licitacion.findMany({
+        where: { codigoExterno: { in: Array.from(codigosExistentes) } },
+        select: { id: true, codigoExterno: true },
+      })).map((l) => [l.codigoExterno, l.id])
+    )
+
     const listaExistente = lista.filter((r) => codigosExistentes.has(r.CodigoExterno))
     for (let i = 0; i < listaExistente.length; i += LOTE) {
       const lote = listaExistente.slice(i, i + LOTE)
@@ -256,21 +264,52 @@ export async function sincronizarLicitaciones(): Promise<ResultadoSync> {
         lote.map(async (raw) => {
           try {
             const comprador = extraerComprador(raw)
-            await db.licitacion.update({
-              where: { codigoExterno: raw.CodigoExterno },
-              data: {
-                nombre: raw.Nombre,
-                estado: raw.Estado ?? 'Activa',
-                codigoEstado: raw.CodigoEstado,
-                fechaCierre: parsearFecha(raw.FechaCierre ?? raw.Fechas?.FechaCierre),
-                fechaPublicacion: parsearFecha(raw.Fechas?.FechaPublicacion),
-                moneda: raw.Moneda ?? null,
-                montoEstimado: raw.MontoEstimado ?? null,
-                itemsCantidad: raw.Items?.Cantidad ?? 0,
-                compradorNombre: comprador.compradorNombre ?? null,
-                compradorRegion: comprador.compradorRegion ?? null,
-              },
+            const items = raw.Items?.Listado?.map((item, idx) => ({
+              correlativo: item.Correlativo ?? idx + 1,
+              nombreProducto: item.NombreProducto,
+              descripcion: item.Descripcion ?? null,
+              unidadMedida: item.UnidadMedida ?? 'Unidad',
+              cantidad: item.Cantidad ?? 1,
+              codigoProducto: item.CodigoProducto ?? null,
+              codigoCategoria: item.CodigoCategoria ?? null,
+            })) ?? []
+
+            const licitacionId = licitacionesIdMap.get(raw.CodigoExterno)
+            if (!licitacionId) return
+
+            // Actualizar licitación e items en transacción atómica
+            await db.$transaction(async (tx) => {
+              // 1. Actualizar campos de la licitación
+              await tx.licitacion.update({
+                where: { id: licitacionId },
+                data: {
+                  nombre: raw.Nombre,
+                  descripcion: raw.Descripcion ?? null,
+                  estado: raw.Estado ?? 'Activa',
+                  codigoEstado: raw.CodigoEstado,
+                  fechaCierre: parsearFecha(raw.FechaCierre ?? raw.Fechas?.FechaCierre),
+                  fechaPublicacion: parsearFecha(raw.Fechas?.FechaPublicacion),
+                  moneda: raw.Moneda ?? null,
+                  montoEstimado: raw.MontoEstimado ?? null,
+                  itemsCantidad: raw.Items?.Cantidad ?? 0,
+                  compradorNombre: comprador.compradorNombre ?? null,
+                  compradorRegion: comprador.compradorRegion ?? null,
+                },
+              })
+
+              // 2. Eliminar items viejos
+              await tx.itemLicitacion.deleteMany({
+                where: { licitacionId },
+              })
+
+              // 3. Crear items nuevos (si existen)
+              if (items.length > 0) {
+                await tx.itemLicitacion.createMany({
+                  data: items.map((item) => ({ ...item, licitacionId })),
+                })
+              }
             })
+
             actualizadas++
             procesadas++
           } catch (err) {
