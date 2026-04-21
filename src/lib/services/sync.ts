@@ -189,7 +189,7 @@ export async function sincronizarLicitaciones(): Promise<ResultadoSync> {
     )
     const nuevasEnLista = lista.filter((l) => !codigosExistentes.has(l.CodigoExterno))
 
-    // Enriquecer con detalle solo las nuevas (2 concurrentes + delay para respetar rate limit)
+    // Enriquecer con detalle solo las nuevas (el listado básico ya trae Descripción e Items)
     const CONCURRENCIA_API = 2
     const DELAY_ENTRE_LOTES_MS = 500
     const detallesNuevas = new Map<string, typeof lista[0]>()
@@ -207,7 +207,7 @@ export async function sincronizarLicitaciones(): Promise<ResultadoSync> {
       }
     }
 
-    // Combinar: existentes usan datos del listado, nuevas usan detalle completo
+    // Usar detalle para nuevas, datos del listado (que ya trae descripción) para existentes
     const listadoEnriquecido = lista.map((raw) => detallesNuevas.get(raw.CodigoExterno) ?? raw)
 
     console.log(`📋 ${lista.length} total | ${codigosExistentes.size} existentes | ${nuevasEnLista.length} nuevas con detalle`)
