@@ -43,16 +43,18 @@ export async function GET(
     }
 
     // Si falta descripción, enriquecer on-demand desde API MP
-    if (!licitacion.descripcion) {
+    if (!licitacion.descripcion?.trim()) {
+      console.log(`🔄 Enriqueciendo on-demand: ${codigo}`)
       try {
         const detalle = await obtenerDetalleLicitacion(codigo)
+        console.log(`✓ Detalle obtenido, Descripcion: ${detalle?.Descripcion ? 'SÍ' : 'NO'}`)
         if (detalle?.Descripcion) {
-          // Actualizar en BD
           await db.licitacion.update({
             where: { codigoExterno: codigo },
             data: { descripcion: detalle.Descripcion },
           })
-          // Actualizar items también si no existen
+          console.log(`✓ Descripción guardada en BD`)
+
           if (detalle.Items?.Listado && detalle.Items.Listado.length > 0 && licitacion.items.length === 0) {
             const items = detalle.Items.Listado.map((item, idx) => ({
               correlativo: item.Correlativo ?? idx + 1,
@@ -66,18 +68,17 @@ export async function GET(
             await db.itemLicitacion.createMany({
               data: items.map((i) => ({ ...i, licitacionId: licitacion.id })),
             })
-            // Refrescar items desde BD
             licitacion.items = await db.itemLicitacion.findMany({
               where: { licitacionId: licitacion.id },
               orderBy: { correlativo: 'asc' },
               take: 200,
             })
+            console.log(`✓ ${items.length} items creados`)
           }
           licitacion.descripcion = detalle.Descripcion
         }
       } catch (err) {
-        // Silencioso: si falla, retornar lo que tenemos
-        console.warn(`No se pudo enriquecer ${codigo} on-demand:`, err instanceof Error ? err.message : err)
+        console.warn(`❌ Enriquecimiento fallido para ${codigo}:`, err instanceof Error ? err.message : err)
       }
     }
 
