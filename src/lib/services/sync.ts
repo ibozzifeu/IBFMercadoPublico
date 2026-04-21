@@ -189,28 +189,33 @@ export async function sincronizarLicitaciones(): Promise<ResultadoSync> {
     )
     const nuevasEnLista = lista.filter((l) => !codigosExistentes.has(l.CodigoExterno))
 
-    // Enriquecer con detalle solo las nuevas (el listado básico ya trae Descripción e Items)
-    const CONCURRENCIA_API = 2
-    const DELAY_ENTRE_LOTES_MS = 500
-    const detallesNuevas = new Map<string, typeof lista[0]>()
-    for (let i = 0; i < nuevasEnLista.length; i += CONCURRENCIA_API) {
-      const lote = nuevasEnLista.slice(i, i + CONCURRENCIA_API)
+    // Enriquecer TODAS las licitaciones con detalle (descripción completa e items)
+    const CONCURRENCIA_API = 3
+    const DELAY_ENTRE_LOTES_MS = 300
+    const detallesMap = new Map<string, typeof lista[0]>()
+
+    console.log(`🔄 Enriqueciendo ${lista.length} licitaciones con detalle...`)
+    for (let i = 0; i < lista.length; i += CONCURRENCIA_API) {
+      const lote = lista.slice(i, i + CONCURRENCIA_API)
       const resultados = await Promise.allSettled(
         lote.map((raw) => obtenerDetalleLicitacion(raw.CodigoExterno))
       )
       for (let j = 0; j < lote.length; j++) {
         const det = resultados[j]
-        detallesNuevas.set(lote[j].CodigoExterno, det.status === 'fulfilled' && det.value ? det.value : lote[j])
+        detallesMap.set(lote[j].CodigoExterno, det.status === 'fulfilled' && det.value ? det.value : lote[j])
       }
-      if (i + CONCURRENCIA_API < nuevasEnLista.length) {
+      if ((i + CONCURRENCIA_API) % 30 === 0) {
+        console.log(`  ${Math.min(i + CONCURRENCIA_API, lista.length)}/${lista.length}`)
+      }
+      if (i + CONCURRENCIA_API < lista.length) {
         await new Promise((r) => setTimeout(r, DELAY_ENTRE_LOTES_MS))
       }
     }
 
-    // Usar detalle para nuevas, datos del listado (que ya trae descripción) para existentes
-    const listadoEnriquecido = lista.map((raw) => detallesNuevas.get(raw.CodigoExterno) ?? raw)
+    // Usar detalle enriquecido para todas
+    const listadoEnriquecido = lista.map((raw) => detallesMap.get(raw.CodigoExterno) ?? raw)
 
-    console.log(`📋 ${lista.length} total | ${codigosExistentes.size} existentes | ${nuevasEnLista.length} nuevas con detalle`)
+    console.log(`📋 ${lista.length} total | ${codigosExistentes.size} existentes | ${nuevasEnLista.length} nuevas`)
 
     // ── NUEVAS: clasificar + crear con items ─────────────────────────────────
     const LOTE = 10
