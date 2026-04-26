@@ -230,6 +230,15 @@ El botón **Actualizar** en la página de licitaciones ejecuta la sincronizació
 }
 ```
 
+### Pipeline de cada ejecución
+
+1. Obtiene la lista de licitaciones activas desde la API de Mercado Público
+2. Crea las nuevas (con clasificación Ollama o heurística) y actualiza las existentes
+3. **Purge automático:** elimina de la BD todas las licitaciones que ya no están en la respuesta de la API (cerradas o vencidas), incluyendo sus items y análisis IA asociados por cascade
+   - Guard de seguridad: el purge solo se ejecuta si la API devolvió ≥ 100 licitaciones, evitando borrado masivo ante una respuesta vacía o error de paginación
+
+El mensaje de resultado incluye el conteo de cada operación: `X nuevas, Y actualizadas, Z eliminadas`.
+
 ---
 
 ## Scripts disponibles

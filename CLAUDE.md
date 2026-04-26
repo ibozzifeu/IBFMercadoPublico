@@ -82,13 +82,19 @@ Browser → login → NextAuth JWT → middleware → API routes → Prisma → 
 
 `src/lib/services/sync.ts` orchestrates the full pipeline: fetch from API → `transformarLicitacion()` → classify with `clasificador.ts` → upsert in batches of 10 → record in `historial_sincronizacion`. New licitaciones are created with their items in a nested `create`; existing ones are updated without touching items.
 
+After creating/updating, a **purge** step deletes all licitaciones whose `codigoExterno` is not in the current API response (they have closed or expired). Items and `analisis_ia` records are deleted by cascade. Guard: purge only runs if the API returned ≥ 100 licitaciones to prevent accidental mass deletion on API errors.
+
 ### Classification
 
 `src/lib/services/clasificador.ts` uses a weighted keyword dictionary to assign one of 6 categories: `Software/Sistemas`, `Hardware/Equipos`, `Redes/Telecomunicaciones`, `Seguridad TI`, `Servicios TI`, `Tecnología General`. Specific terms (ERP, VPN, antivirus) carry higher weight than generic ones (sistema, servicio).
 
 ### Gemini integration
 
-`src/lib/api/gemini.ts` exports three functions: `generarResumenEjecutivo`, `clasificarLicitacion` (JSON response), `generarAnalisisRiesgos`. The `POST /api/analizar` route calls `generarResumenEjecutivo` and caches the result in `analisis_ia` table (unique constraint on `[licitacionId, tipoAnalisis]`).
+`src/lib/api/gemini.ts` exports three functions: `generarResumenEjecutivo`, `clasificarLicitacion` (JSON response), `generarAnalisisRiesgos`. The `POST /api/analizar` route calls `generarResumenEjecutivo` and caches the result in `analisis_ia` table (unique constraint on `[licitacionId, tipoAnalisis]`). The detail page (`/licitaciones/[codigo]/page.tsx`) reads `analisisIA[0]` from the initial GET response and pre-populates the analysis panel — no re-generation needed if already cached.
+
+### Ollama client
+
+`src/lib/api/ollama.ts` wraps the local Ollama API. Calls are serialized via a promise-chain mutex (`ollamaQueue`) so concurrent classification requests from `Promise.all` batches in sync do not race — each request waits for the previous one to finish before calling Ollama. Timeout per request: 90 s.
 
 ### Rate limiting
 
