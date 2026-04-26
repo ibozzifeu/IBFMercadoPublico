@@ -31,7 +31,7 @@ export default function LicitacionesPage() {
       if (!res.ok) throw new Error(data.error || 'Error al sincronizar')
       setMensajeSync({
         tipo: 'ok',
-        texto: `Sincronización completada: ${data.nuevas} nuevas, ${data.actualizadas} actualizadas`,
+        texto: `Sincronización completada: ${data.nuevas} nuevas, ${data.actualizadas} actualizadas, ${data.eliminadas ?? 0} eliminadas`,
       })
       await refetch()
     } catch (err) {

@@ -13,6 +13,7 @@ interface ResultadoSync {
   procesadas: number
   nuevas: number
   actualizadas: number
+  eliminadas: number
   errores: string[]
   duracionMs: number
   usedOllama: boolean
@@ -161,6 +162,7 @@ export async function sincronizarLicitaciones(): Promise<ResultadoSync> {
   const errores: string[] = []
   let nuevas = 0
   let actualizadas = 0
+  let eliminadas = 0
   let procesadas = 0
   let usedOllama = false
   let usedGPU = false
@@ -321,10 +323,26 @@ export async function sincronizarLicitaciones(): Promise<ResultadoSync> {
       )
     }
 
+    // ── PURGE: eliminar licitaciones que ya no están en la API (cerradas/vencidas) ──
+    // Guard: solo si la API devolvió una lista significativa para evitar borrado
+    // masivo accidental ante una respuesta vacía o error de paginación.
+    if (lista.length >= 100) {
+      const codigosEnApi = new Set(lista.map((l) => l.CodigoExterno))
+      const { count } = await db.licitacion.deleteMany({
+        where: { codigoExterno: { notIn: Array.from(codigosEnApi) } },
+      })
+      eliminadas = count
+      if (eliminadas > 0) {
+        console.log(`🗑️ ${eliminadas} licitaciones cerradas/vencidas eliminadas`)
+      }
+    } else {
+      console.warn(`⚠️ Purge omitido: API devolvió solo ${lista.length} licitaciones (mínimo 100)`)
+    }
+
     const duracionMs = Date.now() - inicio
 
     // Log de resumen
-    console.log(`✅ Sync completado: ${procesadas} procesadas, ${nuevas} nuevas, ${actualizadas} actualizadas`)
+    console.log(`✅ Sync completado: ${procesadas} procesadas, ${nuevas} nuevas, ${actualizadas} actualizadas, ${eliminadas} eliminadas`)
     if (usedOllama) {
       console.log(`🤖 Clasificación: ${usedGPU ? '✅ GPU NVIDIA' : '⚠️ CPU'}`)
     } else {
@@ -344,7 +362,7 @@ export async function sincronizarLicitaciones(): Promise<ResultadoSync> {
       },
     })
 
-    return { procesadas, nuevas, actualizadas, errores, duracionMs, usedOllama, usedGPU }
+    return { procesadas, nuevas, actualizadas, eliminadas, errores, duracionMs, usedOllama, usedGPU }
   } catch (error) {
     const duracionMs = Date.now() - inicio
     const msg = sanitizarError(error)
