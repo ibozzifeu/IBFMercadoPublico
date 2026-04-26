@@ -36,6 +36,8 @@ export default function DetalleLicitacionPage() {
 
         const data = await response.json()
         setLicitacion(data.licitacion)
+        const analisisPrevio = data.licitacion?.analisisIA?.[0]?.contenido
+        if (analisisPrevio) setAnalisisIA(analisisPrevio)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error desconocido')
       } finally {
