@@ -33,6 +33,10 @@ interface ClassificationResult {
 
 let ollamaConfig: OllamaConfig | null = null
 
+// Serializa llamadas a Ollama: evita timeouts cuando múltiples licitaciones
+// se clasifican en paralelo (Promise.all de lotes en sync.ts)
+let ollamaQueue: Promise<void> = Promise.resolve()
+
 /**
  * Validar URL de Ollama: solo localhost, IPs privadas o hosts .internal.
  * Previene SSRF si OLLAMA_URL es comprometida (env/deployment).
@@ -157,7 +161,13 @@ function sanitizarTextoPrompt(texto: string, maxChars = 500): string {
 async function callOllama(prompt: string): Promise<string> {
   const config = await getOllamaConfig()
 
+  let resolveSlot!: () => void
+  const slot = new Promise<void>((r) => (resolveSlot = r))
+  const myTurn = ollamaQueue
+  ollamaQueue = slot
+
   try {
+    await myTurn
     const response = await fetch(`${config.baseUrl}/api/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -167,7 +177,7 @@ async function callOllama(prompt: string): Promise<string> {
         stream: false,
         temperature: 0.3,
       }),
-      signal: AbortSignal.timeout(60000),
+      signal: AbortSignal.timeout(90000),
     })
 
     if (!response.ok) {
@@ -178,8 +188,9 @@ async function callOllama(prompt: string): Promise<string> {
     return data.response.trim()
   } catch (error) {
     console.error('❌ Error llamando Ollama:', error)
-    // No exponer baseUrl al cliente
     throw new Error('Clasificador ML no disponible. Usando clasificador heurístico.')
+  } finally {
+    resolveSlot()
   }
 }
 
