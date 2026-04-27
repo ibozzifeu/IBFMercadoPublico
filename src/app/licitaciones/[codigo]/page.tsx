@@ -10,7 +10,7 @@ import { Loading } from '@/components/comun/Loading'
 import { Licitacion } from '@/types/licitacion'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Building2, Calendar, DollarSign, FileText, ArrowLeft, Zap } from 'lucide-react'
+import { Building2, Calendar, DollarSign, FileText, ArrowLeft, Zap, Star } from 'lucide-react'
 import Link from 'next/link'
 
 export default function DetalleLicitacionPage() {
@@ -22,6 +22,8 @@ export default function DetalleLicitacionPage() {
   const [error, setError] = useState<string | null>(null)
   const [analizando, setAnalizando] = useState(false)
   const [analisisIA, setAnalisisIA] = useState<string | null>(null)
+  const [esFavorita, setEsFavorita] = useState(false)
+  const [toggleandoFavorito, setToggleandoFavorito] = useState(false)
 
   useEffect(() => {
     const cargar = async () => {
@@ -29,15 +31,25 @@ export default function DetalleLicitacionPage() {
         setCargando(true)
         setError(null)
 
-        const response = await window.fetch(`/api/licitaciones/${codigo}`)
-        if (!response.ok) {
+        const [resDetalle, resFavoritos] = await Promise.all([
+          window.fetch(`/api/licitaciones/${codigo}`),
+          window.fetch('/api/favoritos'),
+        ])
+
+        if (!resDetalle.ok) {
           throw new Error('No se pudo obtener la licitación')
         }
 
-        const data = await response.json()
+        const data = await resDetalle.json()
         setLicitacion(data.licitacion)
         const analisisPrevio = data.licitacion?.analisisIA?.[0]?.contenido
         if (analisisPrevio) setAnalisisIA(analisisPrevio)
+
+        if (resFavoritos.ok) {
+          const dataFav = await resFavoritos.json()
+          const codigos: string[] = (dataFav.licitaciones ?? []).map((l: { codigoExterno: string }) => l.codigoExterno)
+          setEsFavorita(codigos.includes(codigo))
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error desconocido')
       } finally {
@@ -47,6 +59,24 @@ export default function DetalleLicitacionPage() {
 
     cargar()
   }, [codigo])
+
+  const handleToggleFavorito = async () => {
+    if (toggleandoFavorito) return
+    try {
+      setToggleandoFavorito(true)
+      const response = await window.fetch('/api/favoritos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codigoExterno: codigo }),
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setEsFavorita(data.esFavorita)
+      }
+    } finally {
+      setToggleandoFavorito(false)
+    }
+  }
 
   const handleAnalizarIA = async () => {
     if (!licitacion) return
@@ -117,7 +147,19 @@ export default function DetalleLicitacionPage() {
               <h1 className='text-3xl font-bold'>{licitacion.nombre}</h1>
               <p className='text-muted-foreground mt-2'>Código: {licitacion.codigoExterno}</p>
             </div>
-            <Badge>{licitacion.categoria}</Badge>
+            <div className='flex items-center gap-2 shrink-0'>
+              <button
+                onClick={handleToggleFavorito}
+                disabled={toggleandoFavorito}
+                title={esFavorita ? 'Quitar de favoritas' : 'Agregar a favoritas'}
+                className='p-2 rounded hover:bg-muted transition-colors disabled:opacity-50'
+              >
+                <Star
+                  className={`h-5 w-5 transition-colors ${esFavorita ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground hover:text-yellow-400'}`}
+                />
+              </button>
+              <Badge>{licitacion.categoria}</Badge>
+            </div>
           </div>
         </div>
 
