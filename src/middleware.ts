@@ -16,7 +16,9 @@ export const config = {
   matcher: [
     '/api/licitaciones/:path*',
     '/api/analizar/:path*',
+    '/api/favoritos/:path*',
     '/licitaciones/:path*',
+    '/favoritas/:path*',
     '/dashboard/:path*',
   ],
 }

@@ -8,13 +8,15 @@ import { diasHastaCierre, determinarUrgencia } from '@/lib/utils/fechas'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import Link from 'next/link'
-import { Clock, Building2, FileText } from 'lucide-react'
+import { Clock, Building2, FileText, Star } from 'lucide-react'
 
 interface TarjetaLicitacionProps {
   licitacion: Licitacion
+  esFavorita?: boolean
+  onToggleFavorito?: (codigoExterno: string) => void
 }
 
-export function TarjetaLicitacion({ licitacion }: TarjetaLicitacionProps) {
+export function TarjetaLicitacion({ licitacion, esFavorita = false, onToggleFavorito }: TarjetaLicitacionProps) {
   const dias = diasHastaCierre(licitacion.fechaCierre?.toString())
   const urgencia = dias !== null ? determinarUrgencia(dias) : 'baja'
 
@@ -33,7 +35,20 @@ export function TarjetaLicitacion({ licitacion }: TarjetaLicitacionProps) {
             <CardTitle className='text-base line-clamp-2'>{licitacion.nombre}</CardTitle>
             <CardDescription className='text-xs mt-1'>{licitacion.codigoExterno}</CardDescription>
           </div>
-          <Badge variant={urgencia as Parameters<typeof Badge>[0]['variant']}>{labelUrgencia[urgencia]}</Badge>
+          <div className='flex items-center gap-2 shrink-0'>
+            {onToggleFavorito && (
+              <button
+                onClick={() => onToggleFavorito(licitacion.codigoExterno)}
+                title={esFavorita ? 'Quitar de favoritas' : 'Agregar a favoritas'}
+                className='p-1 rounded hover:bg-muted transition-colors'
+              >
+                <Star
+                  className={`h-4 w-4 transition-colors ${esFavorita ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground hover:text-yellow-400'}`}
+                />
+              </button>
+            )}
+            <Badge variant={urgencia as Parameters<typeof Badge>[0]['variant']}>{labelUrgencia[urgencia]}</Badge>
+          </div>
         </div>
       </CardHeader>
 

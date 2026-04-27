@@ -50,6 +50,7 @@ export interface Licitacion {
   actualizadoEn: Date
   items?: ItemLicitacion[]
   analisisIA?: AnalisisIA[]
+  esFavorita?: boolean
 }
 
 export interface ItemLicitacion {
@@ -93,6 +94,13 @@ export interface EstadisticasLicitacion {
   cierranHoy: number
   cierranEn7Dias: number
   porCategoria: Record<Categoria, number>
+}
+
+export interface Favorito {
+  id: string
+  codigoExterno: string
+  nota?: string | null
+  creadoEn: Date
 }
 
 /**

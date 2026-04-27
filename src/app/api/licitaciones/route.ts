@@ -44,36 +44,42 @@ export async function GET(request: NextRequest) {
     const filtradas = await db.licitacion.count({ where })
 
     // Obtener licitaciones
-    const licitaciones = await db.licitacion.findMany({
-      where,
-      orderBy,
-      take: 100,
-      select: {
-        id: true,
-        codigoExterno: true,
-        nombre: true,
-        descripcion: true,
-        estado: true,
-        codigoEstado: true,
-        fechaCierre: true,
-        fechaCreacion: true,
-        moneda: true,
-        montoEstimado: true,
-        categoria: true,
-        compradorNombre: true,
-        compradorOrganismo: true,
-        compradorUnidad: true,
-        compradorRegion: true,
-        usuarioNombre: true,
-        usuarioCargo: true,
-        itemsCantidad: true,
-        creadoEn: true,
-        actualizadoEn: true,
-      },
-    })
+    const [licitaciones, favoritosDB] = await Promise.all([
+      db.licitacion.findMany({
+        where,
+        orderBy,
+        take: 100,
+        select: {
+          id: true,
+          codigoExterno: true,
+          nombre: true,
+          descripcion: true,
+          estado: true,
+          codigoEstado: true,
+          fechaCierre: true,
+          fechaCreacion: true,
+          moneda: true,
+          montoEstimado: true,
+          categoria: true,
+          compradorNombre: true,
+          compradorOrganismo: true,
+          compradorUnidad: true,
+          compradorRegion: true,
+          usuarioNombre: true,
+          usuarioCargo: true,
+          itemsCantidad: true,
+          creadoEn: true,
+          actualizadoEn: true,
+        },
+      }),
+      db.favorito.findMany({ select: { codigoExterno: true } }),
+    ])
+
+    const codigosFavoritos = new Set(favoritosDB.map((f) => f.codigoExterno))
+    const resultado = licitaciones.map((l) => ({ ...l, esFavorita: codigosFavoritos.has(l.codigoExterno) }))
 
     return NextResponse.json(
-      { licitaciones, total, filtradas, success: true },
+      { licitaciones: resultado, total, filtradas, success: true },
       { headers: rateLimitHeaders(limit) }
     )
   } catch (error) {
