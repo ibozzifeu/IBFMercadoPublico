@@ -9,7 +9,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { codigo: string } }
 ) {
-  const limit = checkRateLimit(getClientIp(request))
+  const limit = await checkRateLimit(getClientIp(request))
   if (!limit.allowed) {
     return NextResponse.json(
       { error: 'Demasiadas solicitudes. Intenta en 1 minuto.', success: false },

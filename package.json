@@ -25,6 +25,8 @@
     "@auth/prisma-adapter": "^2.11.2",
     "@google/generative-ai": "^0.3.0",
     "@prisma/client": "^5.7.0",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.37.0",
     "axios": "^1.6.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",

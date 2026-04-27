@@ -5,7 +5,7 @@ import { checkRateLimit, getClientIp, rateLimitHeaders } from '@/lib/ratelimit'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
-  const limit = checkRateLimit(getClientIp(request))
+  const limit = await checkRateLimit(getClientIp(request))
   if (!limit.allowed) {
     return NextResponse.json(
       { error: 'Demasiadas solicitudes. Intenta en 1 minuto.', success: false },
