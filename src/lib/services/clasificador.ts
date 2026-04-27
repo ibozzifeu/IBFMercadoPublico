@@ -198,16 +198,27 @@ const PONDERACION: Record<string, number> = {
   'sistema': 2, 'servicio': 2, 'red': 3, 'internet': 3,
 }
 
+/** Convierte a minúsculas y colapsa espacios múltiples para comparación uniforme */
 function normalizarTexto(texto: string): string {
   return texto.toLowerCase().trim().replace(/\s+/g, ' ')
 }
 
+/**
+ * Suma los pesos de todos los términos encontrados en el texto.
+ * Términos específicos (ej: 'erp', 'vpn') tienen mayor peso que genéricos ('sistema', 'red').
+ * Ver tabla PONDERACION para los valores exactos.
+ *
+ * @param texto    - Texto ya normalizado donde buscar
+ * @param terminos - Lista de términos de la categoría a evaluar
+ * @returns Puntuación acumulada (mayor = más señales de esa categoría)
+ */
 function calcularPuntuacion(texto: string, terminos: string[]): number {
   const textoNorm = normalizarTexto(texto)
   let puntuacion = 0
 
   for (const termino of terminos) {
     if (textoNorm.includes(termino)) {
+      // Si el término tiene peso especial en PONDERACION, usarlo; si no, peso base = 1
       const peso = PONDERACION[termino] ?? 1
       puntuacion += peso
     }
@@ -216,7 +227,19 @@ function calcularPuntuacion(texto: string, terminos: string[]): number {
 }
 
 /**
- * Clasificar licitación en las nuevas categorías
+ * Clasifica una licitación en una categoría TI mediante scoring por palabras clave.
+ *
+ * Pipeline de dos fases:
+ * 1. Filtro esTI() — descarta si contiene términos inequívocamente No TI o no tiene ningún anchor TI
+ * 2. Scoring — puntúa el texto contra cada categoría y elige la de mayor puntaje
+ *
+ * Confianza = (puntaje_ganador / puntaje_total) × 100
+ * Cuando hay una única categoría con señales fuertes, la confianza se acerca a 100.
+ * Cuando varias categorías tienen puntajes similares, la confianza baja.
+ *
+ * @param nombre      - Nombre de la licitación (campo principal para clasificar)
+ * @param descripcion - Descripción larga (aporta contexto adicional)
+ * @param productos   - Nombres de los items/productos solicitados
  */
 export function clasificarLicitacion(
   nombre: string,
@@ -231,7 +254,7 @@ export function clasificarLicitacion(
     .filter(Boolean)
     .join(' ')
 
-  // Fase 1: filtro IS_TI
+  // Fase 1: si no pasa el filtro TI, retornar No TI directamente sin scoring
   if (!esTI(nombre, descripcion)) {
     return {
       categoria: Categoria.NO_TI,
@@ -240,7 +263,7 @@ export function clasificarLicitacion(
     }
   }
 
-  // Fase 2: scoring por categoría (excluyendo NO_TI del loop)
+  // Fase 2: puntuar contra cada categoría TI (excluyendo NO_TI que no tiene términos)
   const categoriasAEvaluar = Object.entries(CATEGORIAS).filter(
     ([cat]) => cat !== Categoria.NO_TI
   )
@@ -256,9 +279,10 @@ export function clasificarLicitacion(
   const entradas = Object.entries(puntuaciones)
   const maxPuntuacion = Math.max(...entradas.map(([, p]) => p))
 
+  // Sin ningún término de categoría → TI genérica (pasó el filtro esTI pero sin señales específicas)
   if (maxPuntuacion === 0) {
     return {
-      categoria: Categoria.INFRA, // default TI sin categoría específica
+      categoria: Categoria.INFRA, // default cuando es TI pero sin categoría específica identificada
       confianza: 10,
       razon: 'Licitación TI sin categoría específica identificada',
     }
@@ -266,6 +290,7 @@ export function clasificarLicitacion(
 
   const [categoriaPrincipal] = entradas.find(([, p]) => p === maxPuntuacion)!
   const totalPuntuacion = entradas.reduce((s, [, p]) => s + p, 0)
+  // Confianza: proporción del puntaje máximo sobre el total; alta cuando una sola categoría domina
   const confianza = Math.min(Math.round((maxPuntuacion / totalPuntuacion) * 100), 100)
 
   return {
@@ -275,10 +300,12 @@ export function clasificarLicitacion(
   }
 }
 
+/** Retorna todas las categorías TI disponibles (excluye No TI) */
 export function obtenerCategorias(): Categoria[] {
   return Object.values(Categoria).filter((c) => c !== Categoria.NO_TI)
 }
 
+/** Retorna los términos clave asociados a una categoría (útil para debugging y tests) */
 export function obtenerPalabrasClaveCategoria(categoria: Categoria): string[] {
   return CATEGORIAS[categoria] ?? []
 }

@@ -21,8 +21,10 @@ export default function DetalleLicitacionPage() {
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [analizando, setAnalizando] = useState(false)
+  // Si ya existe un análisis cacheado en BD, se precarga desde la respuesta del GET inicial
   const [analisisIA, setAnalisisIA] = useState<string | null>(null)
   const [esFavorita, setEsFavorita] = useState(false)
+  // Evita clicks dobles mientras el toggle está en vuelo
   const [toggleandoFavorito, setToggleandoFavorito] = useState(false)
 
   useEffect(() => {
@@ -31,6 +33,9 @@ export default function DetalleLicitacionPage() {
         setCargando(true)
         setError(null)
 
+        // Carga en paralelo: el detalle y el estado de favorito son independientes.
+        // Usar ?codigo= en lugar de GET /api/favoritos (lista completa) evita
+        // exponer todos los favoritos al cliente solo para verificar uno.
         const [resDetalle, resFavoritos] = await Promise.all([
           window.fetch(`/api/licitaciones/${codigo}`),
           window.fetch(`/api/favoritos?codigo=${encodeURIComponent(codigo)}`),
@@ -42,6 +47,9 @@ export default function DetalleLicitacionPage() {
 
         const data = await resDetalle.json()
         setLicitacion(data.licitacion)
+
+        // El análisis previo viene embebido en la respuesta del GET (analisisIA[0]).
+        // Si existe, se muestra directamente sin necesidad de llamar a Gemini de nuevo.
         const analisisPrevio = data.licitacion?.analisisIA?.[0]?.contenido
         if (analisisPrevio) setAnalisisIA(analisisPrevio)
 
@@ -59,6 +67,11 @@ export default function DetalleLicitacionPage() {
     cargar()
   }, [codigo])
 
+  /**
+   * Toggle de favorito: llama a POST /api/favoritos (que hace upsert/delete)
+   * y sincroniza el estado local con la respuesta del servidor.
+   * La guarda `toggleandoFavorito` evita clicks dobles concurrentes.
+   */
   const handleToggleFavorito = async () => {
     if (toggleandoFavorito) return
     try {

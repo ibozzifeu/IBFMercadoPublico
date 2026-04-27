@@ -1,9 +1,21 @@
+/**
+ * API de favoritos — marca licitaciones para seguimiento.
+ *
+ * GET  /api/favoritos           → lista todas las licitaciones favoritas con sus datos completos
+ * GET  /api/favoritos?codigo=X  → verifica si una licitación específica es favorita (sin exponer la lista completa)
+ * POST /api/favoritos           → toggle: agrega si no existe, elimina si ya existe
+ *
+ * El modelo Favorito usa codigoExterno (no el id interno) como clave única para que los
+ * favoritos sobrevivan al purge+recreate que ocurre en cada sincronización con Mercado Público.
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/api/db'
 import { checkRateLimit, getClientIp, rateLimitHeaders } from '@/lib/ratelimit'
 
 export const dynamic = 'force-dynamic'
 
+// Formato de códigos de Mercado Público (ej: 750563-143-LE23).
+// Valida antes de hacer cualquier consulta a BD para evitar registros basura.
 const MP_CODIGO_RE = /^[\w-]{5,50}$/
 
 export async function GET(request: NextRequest) {
@@ -15,7 +27,8 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  // GET /api/favoritos?codigo=XXX → solo verifica si una licitación es favorita
+  // Modo puntual: verifica un solo código sin retornar la lista completa.
+  // Usado por la página de detalle para inicializar el estado del botón estrella.
   const codigoParam = request.nextUrl.searchParams.get('codigo')
   if (codigoParam) {
     const favorito = await db.favorito.findUnique({ where: { codigoExterno: codigoParam } })
@@ -25,6 +38,8 @@ export async function GET(request: NextRequest) {
     )
   }
 
+  // Modo lista: retorna todas las licitaciones favoritas con sus datos completos.
+  // Preserva el orden de inserción (más reciente primero) mediante el join manual.
   try {
     const favoritos = await db.favorito.findMany({
       orderBy: { creadoEn: 'desc' },
@@ -32,6 +47,8 @@ export async function GET(request: NextRequest) {
 
     const codigos = favoritos.map((f) => f.codigoExterno)
 
+    // Join manual en lugar de relación Prisma: Favorito no tiene FK a Licitacion
+    // para que los favoritos sobrevivan al purge del sync (las licitaciones se recrean).
     const licitaciones = await db.licitacion.findMany({
       where: { codigoExterno: { in: codigos } },
       select: {
@@ -58,13 +75,14 @@ export async function GET(request: NextRequest) {
       },
     })
 
+    // Restaurar el orden de favoritos (findMany no garantiza orden de la cláusula IN)
     const notasPorCodigo = new Map(favoritos.map((f) => [f.codigoExterno, f.nota]))
     const licitacionesPorCodigo = new Map(licitaciones.map((l) => [l.codigoExterno, l]))
 
     const resultado = codigos
       .map((codigo) => {
         const lic = licitacionesPorCodigo.get(codigo)
-        if (!lic) return null
+        if (!lic) return null // Licitación purgada del sync pero aún en favoritos
         return { ...lic, esFavorita: true, notaFavorita: notasPorCodigo.get(codigo) ?? null }
       })
       .filter(Boolean)
@@ -92,6 +110,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { codigoExterno } = body as { codigoExterno?: string }
 
+    // Validar formato antes de tocar la BD (evita registros basura y simplifica debugging)
     if (!codigoExterno || typeof codigoExterno !== 'string' || !MP_CODIGO_RE.test(codigoExterno)) {
       return NextResponse.json(
         { error: 'codigoExterno inválido', success: false },
@@ -99,6 +118,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Toggle: si ya existe → quitar favorito; si no → agregar
     const existente = await db.favorito.findUnique({ where: { codigoExterno } })
 
     if (existente) {

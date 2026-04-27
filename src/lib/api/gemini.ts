@@ -1,5 +1,11 @@
 /**
- * Cliente para Gemini API
+ * Cliente para Gemini API — análisis de licitaciones con IA.
+ *
+ * Patrón lazy singleton: el cliente se instancia la primera vez que se usa
+ * (no al importar el módulo) para que el servidor arranque aunque GEMINI_API_KEY
+ * no esté configurada — útil en entornos de desarrollo sin clave.
+ *
+ * Todas las funciones de este módulo son server-only (no llamar desde componentes cliente).
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai'
@@ -12,8 +18,13 @@ if (!API_KEY) {
   console.warn('GEMINI_API_KEY no está configurado')
 }
 
+// Instancia compartida: evita crear un nuevo cliente en cada request
 let client: GoogleGenerativeAI | null = null
 
+/**
+ * Retorna el cliente Gemini, creándolo si aún no existe.
+ * Lanza error si GEMINI_API_KEY no está configurada.
+ */
 function obtenerCliente(): GoogleGenerativeAI {
   if (!client && API_KEY) {
     client = new GoogleGenerativeAI(API_KEY)
@@ -25,7 +36,14 @@ function obtenerCliente(): GoogleGenerativeAI {
 }
 
 /**
- * Generar resumen ejecutivo de una licitación
+ * Genera un resumen ejecutivo de la licitación incluyendo:
+ * descripción del objetivo, perfil del proveedor ideal y puntos de atención.
+ *
+ * El resultado se cachea en la tabla `analisis_ia` por la ruta POST /api/analizar.
+ * Esta función solo genera — no persiste.
+ *
+ * @param licitacion - Objeto licitación con items ya cargados
+ * @returns Texto markdown con el análisis generado por Gemini
  */
 export async function generarResumenEjecutivo(licitacion: Licitacion): Promise<string> {
   try {
@@ -65,7 +83,12 @@ Sé específico y basado en los datos proporcionados.
 }
 
 /**
- * Clasificar licitación en categoría TI
+ * Clasifica una licitación en una categoría TI usando Gemini.
+ * Nota: en producción se usa el clasificador heurístico (clasificador.ts) o Ollama.
+ * Esta función existe como alternativa basada en LLM para casos especiales.
+ *
+ * @param licitacion - Objeto licitación con nombre, descripción e items
+ * @returns Objeto con categoría asignada, nivel de confianza (0-100) y razón
  */
 export async function clasificarLicitacion(licitacion: Licitacion): Promise<{
   categoria: string
@@ -102,7 +125,7 @@ Responde en JSON con este formato:
     const response = await model.generateContent(prompt)
     const text = response.response.text()
 
-    // Parsear JSON de la respuesta
+    // Extraer JSON de la respuesta (Gemini puede incluir texto alrededor del JSON)
     const match = text.match(/\{[\s\S]*\}/)
     if (!match) {
       throw new Error('Respuesta inválida de Gemini')
@@ -122,7 +145,10 @@ Responde en JSON con este formato:
 }
 
 /**
- * Generar análisis de riesgos
+ * Genera un análisis de riesgos técnicos, comerciales y legales para la licitación.
+ *
+ * @param licitacion - Objeto licitación con nombre, descripción y monto
+ * @returns Texto markdown con el análisis de riesgos generado por Gemini
  */
 export async function generarAnalisisRiesgos(licitacion: Licitacion): Promise<string> {
   try {
