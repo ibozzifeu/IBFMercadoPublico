@@ -1,16 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/api/db'
-import { checkRateLimit, rateLimitHeaders } from '@/lib/ratelimit'
+import { checkRateLimit, getClientIp, rateLimitHeaders } from '@/lib/ratelimit'
 
 export const dynamic = 'force-dynamic'
 
+const MP_CODIGO_RE = /^[\w-]{5,50}$/
+
 export async function GET(request: NextRequest) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
-  const limit = checkRateLimit(ip)
+  const limit = checkRateLimit(getClientIp(request))
   if (!limit.allowed) {
     return NextResponse.json(
       { error: 'Demasiadas solicitudes. Intenta en 1 minuto.', success: false },
       { status: 429, headers: rateLimitHeaders(limit) }
+    )
+  }
+
+  // GET /api/favoritos?codigo=XXX → solo verifica si una licitación es favorita
+  const codigoParam = request.nextUrl.searchParams.get('codigo')
+  if (codigoParam) {
+    const favorito = await db.favorito.findUnique({ where: { codigoExterno: codigoParam } })
+    return NextResponse.json(
+      { esFavorita: !!favorito, success: true },
+      { headers: rateLimitHeaders(limit) }
     )
   }
 
@@ -47,7 +58,6 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // Preservar orden de favoritos (más reciente primero) y añadir nota
     const notasPorCodigo = new Map(favoritos.map((f) => [f.codigoExterno, f.nota]))
     const licitacionesPorCodigo = new Map(licitaciones.map((l) => [l.codigoExterno, l]))
 
@@ -70,8 +80,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
-  const limit = checkRateLimit(ip)
+  const limit = checkRateLimit(getClientIp(request))
   if (!limit.allowed) {
     return NextResponse.json(
       { error: 'Demasiadas solicitudes. Intenta en 1 minuto.', success: false },
@@ -83,9 +92,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { codigoExterno } = body as { codigoExterno?: string }
 
-    if (!codigoExterno || typeof codigoExterno !== 'string') {
+    if (!codigoExterno || typeof codigoExterno !== 'string' || !MP_CODIGO_RE.test(codigoExterno)) {
       return NextResponse.json(
-        { error: 'codigoExterno requerido', success: false },
+        { error: 'codigoExterno inválido', success: false },
         { status: 400 }
       )
     }

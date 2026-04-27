@@ -33,7 +33,7 @@ export default function DetalleLicitacionPage() {
 
         const [resDetalle, resFavoritos] = await Promise.all([
           window.fetch(`/api/licitaciones/${codigo}`),
-          window.fetch('/api/favoritos'),
+          window.fetch(`/api/favoritos?codigo=${encodeURIComponent(codigo)}`),
         ])
 
         if (!resDetalle.ok) {
@@ -47,8 +47,7 @@ export default function DetalleLicitacionPage() {
 
         if (resFavoritos.ok) {
           const dataFav = await resFavoritos.json()
-          const codigos: string[] = (dataFav.licitaciones ?? []).map((l: { codigoExterno: string }) => l.codigoExterno)
-          setEsFavorita(codigos.includes(codigo))
+          setEsFavorita(dataFav.esFavorita ?? false)
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error desconocido')

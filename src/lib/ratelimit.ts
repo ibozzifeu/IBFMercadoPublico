@@ -3,6 +3,15 @@
  * Para producción con múltiples instancias usar Redis/Upstash
  */
 
+import { NextRequest } from 'next/server'
+
+// request.ip es inyectado por el runtime (Vercel/Next.js), no editable por el cliente
+export function getClientIp(request: NextRequest): string {
+  // request.ip es inyectado por Vercel/Next.js runtime, no tipado en todas las versiones
+  const ip = (request as NextRequest & { ip?: string }).ip
+  return ip ?? request.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
+}
+
 interface RateLimitEntry {
   count: number
   resetAt: number
