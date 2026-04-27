@@ -5,7 +5,9 @@ import { Header } from '@/components/comun/Header'
 import { TarjetaLicitacion } from '@/components/licitaciones/TarjetaLicitacion'
 import { SkeletonCard } from '@/components/comun/Loading'
 import { Licitacion } from '@/types/licitacion'
-import { Star, Pencil, Check, X } from 'lucide-react'
+import { Star, Pencil, Check, X, AlertTriangle, Clock } from 'lucide-react'
+import { diasHastaCierre } from '@/lib/utils/fechas'
+import Link from 'next/link'
 
 interface NotaEditorProps {
   codigoExterno: string
@@ -157,6 +159,49 @@ export default function FavoritasPage() {
             </p>
           </div>
         </div>
+
+        {/* Banner de cierre próximo — licitaciones favoritas que cierran en ≤ 3 días */}
+        {!cargando && (() => {
+          const urgentes = licitaciones.filter((l) => {
+            const dias = diasHastaCierre(l.fechaCierre?.toString())
+            return dias !== null && dias <= 3
+          })
+          if (urgentes.length === 0) return null
+          return (
+            <div className='mb-6 rounded-lg border border-orange-400/50 bg-orange-50 dark:bg-orange-950/20 p-4'>
+              <div className='flex items-center gap-2 mb-3'>
+                <AlertTriangle className='h-4 w-4 text-orange-500 shrink-0' />
+                <p className='text-sm font-semibold text-orange-700 dark:text-orange-400'>
+                  {urgentes.length} favorita{urgentes.length !== 1 ? 's' : ''} con cierre próximo
+                </p>
+              </div>
+              <ul className='space-y-2'>
+                {urgentes.map((l) => {
+                  const dias = diasHastaCierre(l.fechaCierre?.toString())
+                  const esCritica = dias === 0
+                  return (
+                    <li key={l.codigoExterno} className='flex items-center justify-between gap-3'>
+                      <Link
+                        href={`/licitaciones/${l.codigoExterno}`}
+                        className='text-sm text-orange-800 dark:text-orange-300 hover:underline truncate flex-1'
+                      >
+                        {l.nombre}
+                      </Link>
+                      <span className={`flex items-center gap-1 text-xs font-semibold shrink-0 px-2 py-0.5 rounded-full ${
+                        esCritica
+                          ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
+                          : 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400'
+                      }`}>
+                        <Clock className='h-3 w-3' />
+                        {esCritica ? '¡Hoy!' : `${dias}d`}
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )
+        })()}
 
         {error && (
           <div className='mb-6 p-4 bg-destructive/10 border border-destructive/50 rounded-lg text-destructive'>
