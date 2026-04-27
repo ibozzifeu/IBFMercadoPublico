@@ -11,6 +11,7 @@ import { Licitacion } from '@/types/licitacion'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Building2, Calendar, DollarSign, FileText, ArrowLeft, Zap, Star } from 'lucide-react'
+import { NotaFavorito } from '@/components/licitaciones/NotaFavorito'
 import Link from 'next/link'
 
 export default function DetalleLicitacionPage() {
@@ -24,6 +25,7 @@ export default function DetalleLicitacionPage() {
   // Si ya existe un análisis cacheado en BD, se precarga desde la respuesta del GET inicial
   const [analisisIA, setAnalisisIA] = useState<string | null>(null)
   const [esFavorita, setEsFavorita] = useState(false)
+  const [notaFavorita, setNotaFavorita] = useState<string | null>(null)
   // Evita clicks dobles mientras el toggle está en vuelo
   const [toggleandoFavorito, setToggleandoFavorito] = useState(false)
 
@@ -56,6 +58,7 @@ export default function DetalleLicitacionPage() {
         if (resFavoritos.ok) {
           const dataFav = await resFavoritos.json()
           setEsFavorita(dataFav.esFavorita ?? false)
+          setNotaFavorita(dataFav.nota ?? null)
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error desconocido')
@@ -84,6 +87,7 @@ export default function DetalleLicitacionPage() {
       if (response.ok) {
         const data = await response.json()
         setEsFavorita(data.esFavorita)
+        if (!data.esFavorita) setNotaFavorita(null)
       }
     } finally {
       setToggleandoFavorito(false)
@@ -174,6 +178,25 @@ export default function DetalleLicitacionPage() {
             </div>
           </div>
         </div>
+
+        {/* Nota de favorito — solo visible cuando la licitación está marcada como favorita */}
+        {esFavorita && (
+          <Card className='mb-6'>
+            <CardHeader className='pb-3'>
+              <CardTitle className='text-sm flex items-center gap-2'>
+                <Star className='h-4 w-4 fill-yellow-400 text-yellow-400' />
+                Nota personal
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <NotaFavorito
+                codigoExterno={codigo}
+                notaInicial={notaFavorita}
+                onGuardada={setNotaFavorita}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Grid de información */}
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4 mb-6'>

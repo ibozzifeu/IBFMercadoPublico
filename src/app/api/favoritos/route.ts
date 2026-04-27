@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
   if (codigoParam) {
     const favorito = await db.favorito.findUnique({ where: { codigoExterno: codigoParam } })
     return NextResponse.json(
-      { esFavorita: !!favorito, success: true },
+      { esFavorita: !!favorito, nota: favorito?.nota ?? null, success: true },
       { headers: rateLimitHeaders(limit) }
     )
   }
