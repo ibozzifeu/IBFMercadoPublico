@@ -7,7 +7,7 @@ import { BuscaTexto } from '@/components/licitaciones/BuscaTexto'
 import { TarjetaLicitacion } from '@/components/licitaciones/TarjetaLicitacion'
 import { SkeletonCard } from '@/components/comun/Loading'
 import { useLicitaciones } from '@/lib/hooks/useLicitaciones'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
 
 export default function LicitacionesPage() {
   const [categoria, setCategoria] = useState('todas')
@@ -17,7 +17,7 @@ export default function LicitacionesPage() {
   const [mensajeSync, setMensajeSync] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null)
   const [favoritas, setFavoritas] = useState<Set<string>>(new Set())
 
-  const { licitaciones, cargando, error, filtradas, refetch } = useLicitaciones({
+  const { licitaciones, cargando, error, filtradas, pagina, totalPaginas, irAPagina, refetch } = useLicitaciones({
     filtroCategoria: categoria,
     busqueda,
     ordenarPor,
@@ -166,16 +166,41 @@ export default function LicitacionesPage() {
               </button>
             </div>
           ) : (
-            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-              {licitaciones.map((lic) => (
-                <TarjetaLicitacion
-                  key={lic.id}
-                  licitacion={lic}
-                  esFavorita={favoritas.has(lic.codigoExterno)}
-                  onToggleFavorito={handleToggleFavorito}
-                />
-              ))}
-            </div>
+            <>
+              <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+                {licitaciones.map((lic) => (
+                  <TarjetaLicitacion
+                    key={lic.id}
+                    licitacion={lic}
+                    esFavorita={favoritas.has(lic.codigoExterno)}
+                    onToggleFavorito={handleToggleFavorito}
+                  />
+                ))}
+              </div>
+
+              {/* Paginación */}
+              {totalPaginas > 1 && (
+                <div className='flex items-center justify-center gap-3 mt-8'>
+                  <button
+                    onClick={() => irAPagina(pagina - 1)}
+                    disabled={pagina <= 1}
+                    className='p-2 rounded-md border border-input hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
+                  >
+                    <ChevronLeft className='h-4 w-4' />
+                  </button>
+                  <span className='text-sm text-muted-foreground'>
+                    Página <span className='font-semibold text-foreground'>{pagina}</span> de {totalPaginas}
+                  </span>
+                  <button
+                    onClick={() => irAPagina(pagina + 1)}
+                    disabled={pagina >= totalPaginas}
+                    className='p-2 rounded-md border border-input hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
+                  >
+                    <ChevronRight className='h-4 w-4' />
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>

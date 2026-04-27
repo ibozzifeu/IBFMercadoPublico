@@ -51,6 +51,7 @@ export interface Licitacion {
   items?: ItemLicitacion[]
   analisisIA?: AnalisisIA[]
   esFavorita?: boolean
+  notaFavorita?: string | null
 }
 
 export interface ItemLicitacion {

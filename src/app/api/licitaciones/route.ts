@@ -19,7 +19,11 @@ export async function GET(request: NextRequest) {
     const busqueda = searchParams.get('busqueda')
     const ordenarPor = searchParams.get('ordenarPor') || 'fechaCierre'
 
-    // Construir filtros
+    // Paginación: page es 1-based, limit máximo 100 para evitar respuestas excesivas
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
+    const porPagina = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '30')))
+    const skip = (page - 1) * porPagina
+
     const where: Record<string, unknown> = {}
 
     if (categoria && categoria !== 'todas') {
@@ -34,20 +38,17 @@ export async function GET(request: NextRequest) {
       ]
     }
 
-    // Ordenar
     const orderBy: Record<string, string> =
       ordenarPor === 'nombre' ? { nombre: 'asc' } : { fechaCierre: 'asc' }
 
-    // Obtener total sin filtros para estadísticas
-    const total = await db.licitacion.count()
-    const filtradas = await db.licitacion.count({ where })
-
-    // Obtener licitaciones
-    const [licitaciones, favoritosDB] = await Promise.all([
+    const [total, filtradas, licitaciones, favoritosDB] = await Promise.all([
+      db.licitacion.count(),
+      db.licitacion.count({ where }),
       db.licitacion.findMany({
         where,
         orderBy,
-        take: 100,
+        skip,
+        take: porPagina,
         select: {
           id: true,
           codigoExterno: true,
@@ -78,7 +79,15 @@ export async function GET(request: NextRequest) {
     const resultado = licitaciones.map((l) => ({ ...l, esFavorita: codigosFavoritos.has(l.codigoExterno) }))
 
     return NextResponse.json(
-      { licitaciones: resultado, total, filtradas, success: true },
+      {
+        licitaciones: resultado,
+        total,
+        filtradas,
+        pagina: page,
+        totalPaginas: Math.ceil(filtradas / porPagina),
+        porPagina,
+        success: true,
+      },
       { headers: rateLimitHeaders(limit) }
     )
   } catch (error) {

@@ -97,6 +97,42 @@ export async function GET(request: NextRequest) {
   }
 }
 
+/**
+ * PATCH /api/favoritos — actualiza la nota de un favorito existente.
+ * Body: { codigoExterno: string, nota: string | null }
+ */
+export async function PATCH(request: NextRequest) {
+  const limit = checkRateLimit(getClientIp(request))
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: 'Demasiadas solicitudes. Intenta en 1 minuto.', success: false },
+      { status: 429, headers: rateLimitHeaders(limit) }
+    )
+  }
+
+  try {
+    const body = await request.json()
+    const { codigoExterno, nota } = body as { codigoExterno?: string; nota?: string | null }
+
+    if (!codigoExterno || typeof codigoExterno !== 'string' || !MP_CODIGO_RE.test(codigoExterno)) {
+      return NextResponse.json({ error: 'codigoExterno inválido', success: false }, { status: 400 })
+    }
+
+    // nota null elimina la nota; string vacío también se trata como null
+    const notaFinal = nota && nota.trim().length > 0 ? nota.trim().substring(0, 500) : null
+
+    const favorito = await db.favorito.update({
+      where: { codigoExterno },
+      data: { nota: notaFinal },
+    })
+
+    return NextResponse.json({ favorito, success: true }, { headers: rateLimitHeaders(limit) })
+  } catch (error) {
+    console.error('Error en PATCH /api/favoritos:', error)
+    return NextResponse.json({ error: 'Error al actualizar nota', success: false }, { status: 500 })
+  }
+}
+
 export async function POST(request: NextRequest) {
   const limit = checkRateLimit(getClientIp(request))
   if (!limit.allowed) {
