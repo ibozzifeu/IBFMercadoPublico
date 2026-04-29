@@ -59,8 +59,7 @@ src/
 │   │   └── mercadoPublico.ts             # Cliente axios MP API (SERVER-ONLY — tiene throw al módulo)
 │   ├── services/
 │   │   ├── sync.ts                       # Orquesta fetch → clasificar → upsert → historial
-│   │   ├── clasificador.ts               # Palabras clave ponderadas → 6 categorías TI
-│   │   └── estadisticas.ts               # Queries agregadas para dashboard
+│   │   └── clasificador.ts               # Palabras clave ponderadas → 6 categorías TI
 │   ├── hooks/
 │   │   └── useLicitaciones.ts            # Hook con filtros, deps primitivas (no objeto)
 │   ├── utils/
