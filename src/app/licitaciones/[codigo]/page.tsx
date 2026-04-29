@@ -10,7 +10,8 @@ import { Loading } from '@/components/comun/Loading'
 import { Licitacion } from '@/types/licitacion'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Building2, Calendar, DollarSign, FileText, ArrowLeft, Zap } from 'lucide-react'
+import { Building2, Calendar, DollarSign, FileText, ArrowLeft, Zap, Star } from 'lucide-react'
+import { NotaFavorito } from '@/components/licitaciones/NotaFavorito'
 import Link from 'next/link'
 
 export default function DetalleLicitacionPage() {
@@ -21,7 +22,12 @@ export default function DetalleLicitacionPage() {
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [analizando, setAnalizando] = useState(false)
+  // Si ya existe un análisis cacheado en BD, se precarga desde la respuesta del GET inicial
   const [analisisIA, setAnalisisIA] = useState<string | null>(null)
+  const [esFavorita, setEsFavorita] = useState(false)
+  const [notaFavorita, setNotaFavorita] = useState<string | null>(null)
+  // Evita clicks dobles mientras el toggle está en vuelo
+  const [toggleandoFavorito, setToggleandoFavorito] = useState(false)
 
   useEffect(() => {
     const cargar = async () => {
@@ -29,15 +35,31 @@ export default function DetalleLicitacionPage() {
         setCargando(true)
         setError(null)
 
-        const response = await window.fetch(`/api/licitaciones/${codigo}`)
-        if (!response.ok) {
+        // Carga en paralelo: el detalle y el estado de favorito son independientes.
+        // Usar ?codigo= en lugar de GET /api/favoritos (lista completa) evita
+        // exponer todos los favoritos al cliente solo para verificar uno.
+        const [resDetalle, resFavoritos] = await Promise.all([
+          window.fetch(`/api/licitaciones/${codigo}`),
+          window.fetch(`/api/favoritos?codigo=${encodeURIComponent(codigo)}`),
+        ])
+
+        if (!resDetalle.ok) {
           throw new Error('No se pudo obtener la licitación')
         }
 
-        const data = await response.json()
+        const data = await resDetalle.json()
         setLicitacion(data.licitacion)
+
+        // El análisis previo viene embebido en la respuesta del GET (analisisIA[0]).
+        // Si existe, se muestra directamente sin necesidad de llamar a Gemini de nuevo.
         const analisisPrevio = data.licitacion?.analisisIA?.[0]?.contenido
         if (analisisPrevio) setAnalisisIA(analisisPrevio)
+
+        if (resFavoritos.ok) {
+          const dataFav = await resFavoritos.json()
+          setEsFavorita(dataFav.esFavorita ?? false)
+          setNotaFavorita(dataFav.nota ?? null)
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error desconocido')
       } finally {
@@ -47,6 +69,30 @@ export default function DetalleLicitacionPage() {
 
     cargar()
   }, [codigo])
+
+  /**
+   * Toggle de favorito: llama a POST /api/favoritos (que hace upsert/delete)
+   * y sincroniza el estado local con la respuesta del servidor.
+   * La guarda `toggleandoFavorito` evita clicks dobles concurrentes.
+   */
+  const handleToggleFavorito = async () => {
+    if (toggleandoFavorito) return
+    try {
+      setToggleandoFavorito(true)
+      const response = await window.fetch('/api/favoritos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codigoExterno: codigo }),
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setEsFavorita(data.esFavorita)
+        if (!data.esFavorita) setNotaFavorita(null)
+      }
+    } finally {
+      setToggleandoFavorito(false)
+    }
+  }
 
   const handleAnalizarIA = async () => {
     if (!licitacion) return
@@ -117,9 +163,40 @@ export default function DetalleLicitacionPage() {
               <h1 className='text-3xl font-bold'>{licitacion.nombre}</h1>
               <p className='text-muted-foreground mt-2'>Código: {licitacion.codigoExterno}</p>
             </div>
-            <Badge>{licitacion.categoria}</Badge>
+            <div className='flex items-center gap-2 shrink-0'>
+              <button
+                onClick={handleToggleFavorito}
+                disabled={toggleandoFavorito}
+                title={esFavorita ? 'Quitar de favoritas' : 'Agregar a favoritas'}
+                className='p-2 rounded hover:bg-muted transition-colors disabled:opacity-50'
+              >
+                <Star
+                  className={`h-5 w-5 transition-colors ${esFavorita ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground hover:text-yellow-400'}`}
+                />
+              </button>
+              <Badge>{licitacion.categoria}</Badge>
+            </div>
           </div>
         </div>
+
+        {/* Nota de favorito — solo visible cuando la licitación está marcada como favorita */}
+        {esFavorita && (
+          <Card className='mb-6'>
+            <CardHeader className='pb-3'>
+              <CardTitle className='text-sm flex items-center gap-2'>
+                <Star className='h-4 w-4 fill-yellow-400 text-yellow-400' />
+                Nota personal
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <NotaFavorito
+                codigoExterno={codigo}
+                notaInicial={notaFavorita}
+                onGuardada={setNotaFavorita}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Grid de información */}
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4 mb-6'>

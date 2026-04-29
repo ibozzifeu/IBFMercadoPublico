@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/api/db'
 import { generarResumenEjecutivo } from '@/lib/api/gemini'
-import { checkRateLimit, rateLimitHeaders } from '@/lib/ratelimit'
+import { checkRateLimit, getClientIp, rateLimitHeaders } from '@/lib/ratelimit'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
-  const limit = checkRateLimit(ip)
+  const limit = await checkRateLimit(getClientIp(request))
   if (!limit.allowed) {
     return NextResponse.json(
       { error: 'Demasiadas solicitudes. Intenta en 1 minuto.', success: false },

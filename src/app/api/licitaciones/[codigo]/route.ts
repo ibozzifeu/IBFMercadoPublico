@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/api/db'
-import { checkRateLimit, rateLimitHeaders } from '@/lib/ratelimit'
+import { checkRateLimit, getClientIp, rateLimitHeaders } from '@/lib/ratelimit'
 import { obtenerDetalleLicitacion } from '@/lib/api/mercadoPublico'
 
 export const dynamic = 'force-dynamic'
@@ -9,8 +9,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { codigo: string } }
 ) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
-  const limit = checkRateLimit(ip)
+  const limit = await checkRateLimit(getClientIp(request))
   if (!limit.allowed) {
     return NextResponse.json(
       { error: 'Demasiadas solicitudes. Intenta en 1 minuto.', success: false },

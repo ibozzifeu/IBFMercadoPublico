@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Header } from '@/components/comun/Header'
 import { FiltrosCategorias } from '@/components/licitaciones/FiltrosCategorias'
 import { BuscaTexto } from '@/components/licitaciones/BuscaTexto'
 import { TarjetaLicitacion } from '@/components/licitaciones/TarjetaLicitacion'
 import { SkeletonCard } from '@/components/comun/Loading'
 import { useLicitaciones } from '@/lib/hooks/useLicitaciones'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
 
 export default function LicitacionesPage() {
   const [categoria, setCategoria] = useState('todas')
@@ -15,12 +15,44 @@ export default function LicitacionesPage() {
   const [ordenarPor, setOrdenarPor] = useState<'fechaCierre' | 'nombre'>('fechaCierre')
   const [sincronizando, setSincronizando] = useState(false)
   const [mensajeSync, setMensajeSync] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null)
+  const [favoritas, setFavoritas] = useState<Set<string>>(new Set())
 
-  const { licitaciones, cargando, error, filtradas, refetch } = useLicitaciones({
+  const { licitaciones, cargando, error, filtradas, pagina, totalPaginas, irAPagina, refetch } = useLicitaciones({
     filtroCategoria: categoria,
     busqueda,
     ordenarPor,
   })
+
+  // Sincronizar set de favoritas con la respuesta de la API
+  useEffect(() => {
+    const favs = new Set(licitaciones.filter((l) => l.esFavorita).map((l) => l.codigoExterno))
+    setFavoritas(favs)
+  }, [licitaciones])
+
+  const handleToggleFavorito = useCallback(async (codigoExterno: string) => {
+    // Optimistic update
+    setFavoritas((prev) => {
+      const next = new Set(prev)
+      if (next.has(codigoExterno)) next.delete(codigoExterno)
+      else next.add(codigoExterno)
+      return next
+    })
+    try {
+      await window.fetch('/api/favoritos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codigoExterno }),
+      })
+    } catch {
+      // Revertir si falla
+      setFavoritas((prev) => {
+        const next = new Set(prev)
+        if (next.has(codigoExterno)) next.delete(codigoExterno)
+        else next.add(codigoExterno)
+        return next
+      })
+    }
+  }, [])
 
   async function handleSync() {
     setSincronizando(true)
@@ -46,7 +78,7 @@ export default function LicitacionesPage() {
 
   return (
     <>
-      <Header />
+      <Header countFavoritas={favoritas.size} />
 
       <main className='container max-w-7xl py-8'>
         {/* Encabezado */}
@@ -134,11 +166,41 @@ export default function LicitacionesPage() {
               </button>
             </div>
           ) : (
-            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-              {licitaciones.map((lic) => (
-                <TarjetaLicitacion key={lic.id} licitacion={lic} />
-              ))}
-            </div>
+            <>
+              <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+                {licitaciones.map((lic) => (
+                  <TarjetaLicitacion
+                    key={lic.id}
+                    licitacion={lic}
+                    esFavorita={favoritas.has(lic.codigoExterno)}
+                    onToggleFavorito={handleToggleFavorito}
+                  />
+                ))}
+              </div>
+
+              {/* Paginación */}
+              {totalPaginas > 1 && (
+                <div className='flex items-center justify-center gap-3 mt-8'>
+                  <button
+                    onClick={() => irAPagina(pagina - 1)}
+                    disabled={pagina <= 1}
+                    className='p-2 rounded-md border border-input hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
+                  >
+                    <ChevronLeft className='h-4 w-4' />
+                  </button>
+                  <span className='text-sm text-muted-foreground'>
+                    Página <span className='font-semibold text-foreground'>{pagina}</span> de {totalPaginas}
+                  </span>
+                  <button
+                    onClick={() => irAPagina(pagina + 1)}
+                    disabled={pagina >= totalPaginas}
+                    className='p-2 rounded-md border border-input hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
+                  >
+                    <ChevronRight className='h-4 w-4' />
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>

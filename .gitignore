@@ -26,6 +26,9 @@ dist/
 .env.local
 .env.*.local
 
+# MCP config (contiene credenciales de BD)
+.mcp.json
+
 # Logs
 logs/
 *.log

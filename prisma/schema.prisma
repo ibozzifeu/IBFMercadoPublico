@@ -169,22 +169,14 @@ model HistorialSincronizacion {
 }
 
 // ============================================================
-// BÚSQUEDAS Y FAVORITOS (Futuro)
+// FAVORITOS
 // ============================================================
-// model BusquedaGuardada {
-//   id            String   @id @default(cuid())
-//   nombre        String
-//   categorias    String[] // JSON array de categorías
-//   terminos      String?  // Términos de búsqueda
-//   estado        String?  // Filtro por estado
-//   creadoEn      DateTime @default(now())
-//   actualizadoEn DateTime @updatedAt
-// }
+model Favorito {
+  id            String   @id @default(cuid())
+  /// Clave externa de Mercado Público — sobrevive al purge/re-create del sync
+  codigoExterno String   @unique
+  nota          String?  @db.Text
+  creadoEn      DateTime @default(now())
 
-// model Favorito {
-//   id            String   @id @default(cuid())
-//   licitacionId  String
-//   nota          String?  @db.Text
-//   etiquetas     String[] // JSON array de etiquetas custom
-//   creadoEn      DateTime @default(now())
-// }
+  @@map("favoritos")
+}
