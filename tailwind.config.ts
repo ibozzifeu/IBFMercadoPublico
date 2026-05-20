@@ -8,79 +8,123 @@ const config: Config = {
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
+    // ENFORCE SHARP GEOMETRY: Override standard Tailwind border-radius configurations
+    borderRadius: {
+      none: '0px',
+      sm: '0px',
+      DEFAULT: '0px',
+      md: '0px',
+      lg: '0px',
+      xl: '0px',
+      '2xl': '0px',
+      '3xl': '0px',
+      full: '0px',
+    },
+    // FLAT BRUTALIST AESTHETIC: Override all shadows to ensure flat, solid surfaces
+    boxShadow: {
+      none: 'none',
+      sm: 'none',
+      DEFAULT: 'none',
+      md: 'none',
+      lg: 'none',
+      xl: 'none',
+      '2xl': 'none',
+      inner: 'none',
+    },
     extend: {
       fontFamily: {
-        sans: ['var(--font-sans)', ...defaultTheme.fontFamily.sans],
+        // Enforce Inter as the primary sans-serif font
+        sans: ['Inter', ...defaultTheme.fontFamily.sans],
+      },
+      fontSize: {
+        // Add specific design system typography classes
+        'ibf-h1': ['40px', { lineHeight: '1.2', letterSpacing: '-0.02em', fontWeight: '700' }],
+        'ibf-h2': ['32px', { lineHeight: '1.3', letterSpacing: '-0.02em', fontWeight: '700' }],
+        'ibf-h3': ['24px', { lineHeight: '1.4', letterSpacing: '-0.01em', fontWeight: '700' }],
+        'ibf-body-lg': ['18px', { lineHeight: '1.6', fontWeight: '400' }],
+        'ibf-body-md': ['16px', { lineHeight: '1.6', fontWeight: '400' }],
+        'ibf-data-mono': ['14px', { lineHeight: '1.5', letterSpacing: '0.02em', fontWeight: '500' }],
+        'ibf-label-caps': ['12px', { lineHeight: '1', letterSpacing: '0.1em', fontWeight: '600' }],
       },
       colors: {
-        // CSS variables → Tailwind utilities (shadcn/ui pattern)
-        background: 'hsl(var(--background))',
-        foreground: 'hsl(var(--foreground))',
-        border: 'hsl(var(--border))',
-        input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))',
+        // Strict mapping of closed functional design tokens
+        background: '#FFFFFF', // ibf-white-executive
+        foreground: '#1A202C', // ibf-charcoal-core
+        border: '#718096',     // ibf-titanium-slate
+        input: '#718096',      // ibf-titanium-slate
+        ring: '#0047AB',       // ibf-precision-cobalt
+        
         primary: {
-          DEFAULT: 'hsl(var(--primary))',
-          foreground: 'hsl(var(--primary-foreground))',
+          DEFAULT: '#0047AB',  // ibf-precision-cobalt (Functional CTA)
+          foreground: '#FFFFFF',
         },
         secondary: {
-          DEFAULT: 'hsl(var(--secondary))',
-          foreground: 'hsl(var(--secondary-foreground))',
+          DEFAULT: '#F7FAFC',  // ibf-white-snow
+          foreground: '#0A1128', // ibf-midnight-boardroom
         },
         muted: {
-          DEFAULT: 'hsl(var(--muted))',
-          foreground: 'hsl(var(--muted-foreground))',
+          DEFAULT: '#F7FAFC',
+          foreground: '#718096',
         },
         accent: {
-          DEFAULT: 'hsl(var(--accent))',
-          foreground: 'hsl(var(--accent-foreground))',
+          DEFAULT: '#F7FAFC',
+          foreground: '#0A1128',
         },
         destructive: {
-          DEFAULT: 'hsl(var(--destructive))',
-          foreground: 'hsl(var(--destructive-foreground))',
+          DEFAULT: '#EF4444',
+          foreground: '#FFFFFF',
         },
         card: {
-          DEFAULT: 'hsl(var(--card))',
-          foreground: 'hsl(var(--card-foreground))',
+          DEFAULT: '#F7FAFC',
+          foreground: '#1A202C',
         },
         popover: {
-          DEFAULT: 'hsl(var(--popover))',
-          foreground: 'hsl(var(--popover-foreground))',
+          DEFAULT: '#FFFFFF',
+          foreground: '#1A202C',
         },
-        // Colores personalizados para el proyecto
+        success: {
+          DEFAULT: '#1F7A5D',  // ibf-opex-emerald
+          foreground: '#FFFFFF',
+        },
+
+        // Explicit Design Tokens for Direct Utility Classes
+        ibf: {
+          'white-executive': '#FFFFFF',
+          'white-snow': '#F7FAFC',
+          'charcoal-core': '#1A202C',
+          'midnight-boardroom': '#0A1128',
+          'titanium-slate': '#718096',
+          'precision-cobalt': '#0047AB',
+          'opex-emerald': '#1F7A5D',
+        },
+
+        // Mappings for Existing Project Color Variables (Aligned to Design System)
         brand: {
-          50: '#f0f4ff',
-          100: '#e0e9ff',
-          200: '#c7d7ff',
-          300: '#a4baff',
-          400: '#8099ff',
-          500: '#5d6dff',
-          600: '#4649ff',
-          700: '#2e2aff',
-          800: '#1e1ab8',
-          900: '#131589',
+          50: '#F7FAFC',
+          100: '#F7FAFC',
+          200: '#718096',
+          300: '#718096',
+          400: '#0047AB',
+          500: '#0047AB',
+          600: '#0A1128',
+          700: '#0A1128',
+          800: '#0A1128',
+          900: '#0A1128',
         },
-        // Estados de licitación
         status: {
-          active: '#10b981',
-          closed: '#ef4444',
-          pending: '#f59e0b',
-          awarded: '#8b5cf6',
+          active: '#1F7A5D',    // Maps to ibf-opex-emerald
+          closed: '#EF4444',    // Flat Red
+          pending: '#718096',   // Maps to ibf-titanium-slate
+          awarded: '#0047AB',   // Maps to ibf-precision-cobalt
         },
-        // Categorías TI
         category: {
-          software: '#3b82f6',
-          hardware: '#8b5cf6',
-          networks: '#ec4899',
-          security: '#ef4444',
-          services: '#f59e0b',
-          general: '#6b7280',
+          software: '#0047AB',  // Maps to ibf-precision-cobalt
+          hardware: '#1A202C',  // Maps to ibf-charcoal-core
+          networks: '#0A1128',  // Maps to ibf-midnight-boardroom
+          security: '#EF4444',  // Flat Red
+          services: '#718096',  // Maps to ibf-titanium-slate
+          general: '#F7FAFC',   // Maps to ibf-white-snow
         },
-      },
-      borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
       },
     },
   },
