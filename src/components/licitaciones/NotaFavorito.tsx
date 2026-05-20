@@ -81,7 +81,7 @@ export function NotaFavorito({ codigoExterno, notaInicial, onGuardada }: NotaFav
   return (
     <div className='flex items-start gap-2'>
       {nota ? (
-        <p className='text-sm text-muted-foreground flex-1 italic'>"{nota}"</p>
+        <p className='text-sm text-muted-foreground flex-1 italic'>&ldquo;{nota}&rdquo;</p>
       ) : (
         <span className='text-sm text-muted-foreground flex-1'>Sin nota — haz click en el lápiz para añadir una</span>
       )}
