@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sincronizarLicitaciones } from '@/lib/services/sync'
 import { auth } from '@/auth'
+import { timingSafeEqual } from 'crypto'
+import { Buffer } from 'buffer'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -10,7 +12,12 @@ export async function POST(request: NextRequest) {
   const session = await auth()
   const secret = request.headers.get('x-cron-secret')
 
-  if (!session && secret !== process.env.CRON_SECRET) {
+  const secretBuffer = Buffer.from(secret || 'invalid')
+  const envSecretBuffer = Buffer.from(process.env.CRON_SECRET || '')
+
+  const isValidCron = secretBuffer.length === envSecretBuffer.length && timingSafeEqual(secretBuffer, envSecretBuffer)
+
+  if (!session && !isValidCron) {
     return NextResponse.json({ error: 'No autorizado', success: false }, { status: 401 })
   }
 

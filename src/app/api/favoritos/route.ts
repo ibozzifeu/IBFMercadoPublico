@@ -41,9 +41,18 @@ export async function GET(request: NextRequest) {
   // Modo lista: retorna todas las licitaciones favoritas con sus datos completos.
   // Preserva el orden de inserción (más reciente primero) mediante el join manual.
   try {
-    const favoritos = await db.favorito.findMany({
-      orderBy: { creadoEn: 'desc' },
-    })
+    const page = Math.max(1, parseInt(request.nextUrl.searchParams.get('page') || '1'))
+    const limitParams = Math.min(100, Math.max(1, parseInt(request.nextUrl.searchParams.get('limit') || '50')))
+    const skip = (page - 1) * limitParams
+
+    const [totalFavoritos, favoritos] = await Promise.all([
+      db.favorito.count(),
+      db.favorito.findMany({
+        orderBy: { creadoEn: 'desc' },
+        skip,
+        take: limitParams,
+      })
+    ])
 
     const codigos = favoritos.map((f) => f.codigoExterno)
 
@@ -88,7 +97,14 @@ export async function GET(request: NextRequest) {
       .filter(Boolean)
 
     return NextResponse.json(
-      { licitaciones: resultado, total: resultado.length, success: true },
+      {
+        licitaciones: resultado,
+        total: totalFavoritos,
+        pagina: page,
+        totalPaginas: Math.ceil(totalFavoritos / limitParams),
+        porPagina: limitParams,
+        success: true
+      },
       { headers: rateLimitHeaders(limit) }
     )
   } catch (error) {
