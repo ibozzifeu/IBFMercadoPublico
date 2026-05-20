@@ -48,9 +48,9 @@ export async function GET(request: NextRequest) {
     const [totalFavoritos, favoritos] = await Promise.all([
       db.favorito.count(),
       db.favorito.findMany({
-        orderBy: { creadoEn: 'desc' },
-        skip,
         take: limitParams,
+        skip: skip,
+        orderBy: { creadoEn: 'desc' },
       })
     ])
 

@@ -15,7 +15,8 @@ export async function POST(request: NextRequest) {
   const secretBuffer = Buffer.from(secret || 'invalid')
   const envSecretBuffer = Buffer.from(process.env.CRON_SECRET || '')
 
-  const isValidCron = secretBuffer.length === envSecretBuffer.length && timingSafeEqual(secretBuffer, envSecretBuffer)
+  const lengthsMatch = secretBuffer.length === envSecretBuffer.length
+  const isValidCron = lengthsMatch && timingSafeEqual(secretBuffer, envSecretBuffer)
 
   if (!session && !isValidCron) {
     return NextResponse.json({ error: 'No autorizado', success: false }, { status: 401 })

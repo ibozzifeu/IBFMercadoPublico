@@ -9,6 +9,7 @@
  */
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
+import crypto from 'crypto'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   // Requerido en entornos con proxy inverso (Docker, Vercel, Nginx) donde el
@@ -27,12 +28,34 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
        * El id '1' es fijo porque la app es single-user — no hay tabla de usuarios.
        */
       authorize(credentials) {
-        if (
-          credentials.username === process.env.AUTH_USERNAME &&
-          credentials.password === process.env.AUTH_PASSWORD
-        ) {
-          return { id: '1', name: credentials.username as string }
+        if (!credentials?.username || !credentials?.password) {
+          return null
         }
+
+        const usernameStr = credentials.username as string
+        const passwordStr = credentials.password as string
+
+        const targetUsername = process.env.AUTH_USERNAME || ''
+        const targetPassword = process.env.AUTH_PASSWORD || ''
+
+        const userBuffer = Buffer.from(usernameStr)
+        const targetUserBuffer = Buffer.from(targetUsername)
+        const passBuffer = Buffer.from(passwordStr)
+        const targetPasswordBuffer = Buffer.from(targetPassword)
+
+        // Strict length verification before using timingSafeEqual to prevent length-mismatch exceptions
+        if (
+          userBuffer.length === targetUserBuffer.length &&
+          passBuffer.length === targetPasswordBuffer.length
+        ) {
+          const userMatch = crypto.timingSafeEqual(userBuffer, targetUserBuffer)
+          const passMatch = crypto.timingSafeEqual(passBuffer, targetPasswordBuffer)
+
+          if (userMatch && passMatch) {
+            return { id: '1', name: usernameStr }
+          }
+        }
+
         return null
       },
     }),
